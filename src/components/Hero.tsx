@@ -1,13 +1,9 @@
 
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 
 const Hero = () => {
-  const scrollToBooking = () => {
-    const element = document.getElementById('booking');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  const navigate = useNavigate();
 
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -34,7 +30,7 @@ const Hero = () => {
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button 
-              onClick={scrollToBooking}
+              onClick={() => navigate('/book-now')}
               className="spa-button text-lg px-8 py-4"
             >
               Book Your Experience
@@ -42,7 +38,7 @@ const Hero = () => {
             <Button 
               variant="outline" 
               className="text-lg px-8 py-4 border-green-300 text-green-700 hover:bg-green-50"
-              onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => navigate('/services')}
             >
               Explore Services
             </Button>

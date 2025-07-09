@@ -1,45 +1,57 @@
 
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Phone, MapPin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const location = useLocation();
 
-  const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      setIsMenuOpen(false);
-    }
+  const isActive = (path: string) => {
+    return location.pathname === path;
   };
 
   return (
     <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-sm z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-green-500 rounded-full"></div>
             <h1 className="text-2xl font-bold text-green-600">Serenity Spa</h1>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <button onClick={() => scrollToSection('home')} className="text-gray-700 hover:text-green-600 transition-colors">
+            <Link 
+              to="/" 
+              className={`transition-colors ${isActive('/') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+            >
               Home
-            </button>
-            <button onClick={() => scrollToSection('services')} className="text-gray-700 hover:text-green-600 transition-colors">
+            </Link>
+            <Link 
+              to="/services" 
+              className={`transition-colors ${isActive('/services') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+            >
               Services
-            </button>
-            <button onClick={() => scrollToSection('booking')} className="text-gray-700 hover:text-green-600 transition-colors">
+            </Link>
+            <Link 
+              to="/book-now" 
+              className={`transition-colors ${isActive('/book-now') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+            >
               Book Now
-            </button>
-            <button onClick={() => scrollToSection('contact')} className="text-gray-700 hover:text-green-600 transition-colors">
+            </Link>
+            <Link 
+              to="/contact" 
+              className={`transition-colors ${isActive('/contact') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+            >
               Contact
-            </button>
-            <button onClick={() => scrollToSection('admin')} className="text-gray-700 hover:text-green-600 transition-colors">
+            </Link>
+            <Link 
+              to="/admin" 
+              className={`transition-colors ${isActive('/admin') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+            >
               Admin
-            </button>
+            </Link>
           </nav>
 
           {/* Contact Info */}
@@ -67,21 +79,41 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-t py-4">
             <nav className="flex flex-col space-y-3">
-              <button onClick={() => scrollToSection('home')} className="text-left text-gray-700 hover:text-green-600 transition-colors px-2 py-1">
+              <Link 
+                to="/" 
+                onClick={() => setIsMenuOpen(false)}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              >
                 Home
-              </button>
-              <button onClick={() => scrollToSection('services')} className="text-left text-gray-700 hover:text-green-600 transition-colors px-2 py-1">
+              </Link>
+              <Link 
+                to="/services" 
+                onClick={() => setIsMenuOpen(false)}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/services') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              >
                 Services
-              </button>
-              <button onClick={() => scrollToSection('booking')} className="text-left text-gray-700 hover:text-green-600 transition-colors px-2 py-1">
+              </Link>
+              <Link 
+                to="/book-now" 
+                onClick={() => setIsMenuOpen(false)}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/book-now') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              >
                 Book Now
-              </button>
-              <button onClick={() => scrollToSection('contact')} className="text-left text-gray-700 hover:text-green-600 transition-colors px-2 py-1">
+              </Link>
+              <Link 
+                to="/contact" 
+                onClick={() => setIsMenuOpen(false)}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/contact') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              >
                 Contact
-              </button>
-              <button onClick={() => scrollToSection('admin')} className="text-left text-gray-700 hover:text-green-600 transition-colors px-2 py-1">
+              </Link>
+              <Link 
+                to="/admin" 
+                onClick={() => setIsMenuOpen(false)}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/admin') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              >
                 Admin
-              </button>
+              </Link>
             </nav>
           </div>
         )}
