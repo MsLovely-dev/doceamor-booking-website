@@ -1,22 +1,69 @@
 # Django Backend
 
-This folder is reserved for your Django API/backend.
+Backend is set up with Django + Django REST Framework + CORS support.
+
+## Stack
+
+- Django
+- Django REST Framework
+- django-cors-headers
+- python-dotenv
 
 ## Quick start
 
 1. Create virtual environment:
-   python -m venv .venv
-2. Activate it:
-   .venv\\Scripts\\activate
-3. Install Django:
-   pip install django djangorestframework django-cors-headers
-4. Start project here:
-   django-admin startproject config .
-5. Run server:
-   python manage.py runserver
+   `python -m venv .venv`
+2. Activate it (PowerShell):
+   `.venv\Scripts\Activate.ps1`
+3. Install dependencies:
+   `pip install -r requirements.txt`
+4. Create env file:
+   `Copy-Item .env.example .env`
+5. Apply migrations:
+   `python manage.py migrate`
+6. Run development server:
+   `python manage.py runserver`
 
-## Recommended next steps
+## Settings
 
-- Add `.env` and settings split (`base.py`, `dev.py`, `prod.py`)
-- Configure CORS for your frontend origin
-- Add app modules: `users`, `bookings`, `services`
+- `config/settings/base.py`: shared settings
+- `config/settings/dev.py`: development settings
+- `config/settings/prod.py`: production settings
+- `config/settings/__init__.py`: auto-selects by `DJANGO_ENV`
+
+## API routes
+
+- `GET /api/health/`
+- `GET|POST /api/services/`
+- `GET|PUT|PATCH|DELETE /api/services/{id}/`
+- `POST /api/bookings/` (guest create)
+- `POST /api/bookings/{public_id}/submit-payment-proof/` (guest)
+- `POST /api/bookings/{public_id}/track-status/` (guest with `customer_email + guest_token`)
+- `POST /api/bookings/{public_id}/cancel/` (guest/admin)
+- `POST /api/bookings/{public_id}/verify-payment/` (admin/operator)
+- `POST /api/bookings/{public_id}/complete/` (admin/operator)
+- `GET /api/bookings/staff/` (public list, active-only by default)
+- `POST /api/bookings/staff/` (admin only)
+- `GET|PUT|PATCH|DELETE /api/bookings/staff/{id}/`
+- `GET|POST /api/bookings/availability/` (public read for bookable slots, supports `service`, `staff`, `date`, `is_booked`)
+- `GET|PUT|PATCH|DELETE /api/bookings/availability/{id}/`
+
+## Role model
+
+- `admin`: full backoffice control
+- `operator`: booking operations (`verify-payment`, `complete`, booking list/retrieve)
+- both roles are managed using Django Groups
+
+## Notes
+
+- Default DB is SQLite.
+- PostgreSQL is enabled automatically when `POSTGRES_DB` env vars are set.
+- Booking status email notifications are enabled by default and sent using Django email backend.
+  - Dev default: `EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend` (prints email in server logs)
+  - To use SMTP, set `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` and configure:
+    `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`/`EMAIL_USE_SSL`, `DEFAULT_FROM_EMAIL`
+  - Disable emails with `BOOKING_STATUS_EMAIL_ENABLED=false`
+- To import frontend catalog services into backend DB, run:
+  `python manage.py sync_catalog_services`
+  optional flags:
+  `--dry-run`, `--update-existing`

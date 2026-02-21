@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Phone, MapPin } from 'lucide-react';
+import { BOOKING_ENABLED } from '@/config/features';
+import doceamorIcon from '@/assets/icons/doceamor-icon.png';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -12,45 +14,45 @@ const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-sm z-50">
+    <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md shadow-sm z-50 border-b border-[#F5C5C5]">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-green-500 rounded-full"></div>
-            <h1 className="text-2xl font-bold text-green-600">Serenity Spa</h1>
+            <img
+              src={doceamorIcon}
+              alt="Doce-Amor logo"
+              className="h-9 w-9 rounded-full object-cover"
+            />
+            <h1 className="text-2xl font-display font-semibold text-[#F1B2B5]">Doce-Amor Wellness Spa</h1>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
             <Link 
               to="/" 
-              className={`transition-colors ${isActive('/') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              className={`transition-colors ${isActive('/') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
             >
               Home
             </Link>
             <Link 
               to="/services" 
-              className={`transition-colors ${isActive('/services') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              className={`transition-colors ${isActive('/services') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
             >
               Services
             </Link>
-            <Link 
-              to="/book-now" 
-              className={`transition-colors ${isActive('/book-now') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
-            >
-              Book Now
-            </Link>
+            {BOOKING_ENABLED ? (
+              <Link
+                to="/book-now"
+                className={`transition-colors ${isActive('/book-now') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
+              >
+                Book Now
+              </Link>
+            ) : null}
             <Link 
               to="/contact" 
-              className={`transition-colors ${isActive('/contact') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+              className={`transition-colors ${isActive('/contact') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
             >
               Contact
-            </Link>
-            <Link 
-              to="/admin" 
-              className={`transition-colors ${isActive('/admin') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
-            >
-              Admin
             </Link>
           </nav>
 
@@ -58,11 +60,11 @@ const Header = () => {
           <div className="hidden lg:flex items-center space-x-4 text-sm text-gray-600">
             <div className="flex items-center space-x-1">
               <Phone className="w-4 h-4" />
-              <span>(555) 123-4567</span>
+              <span>0977 240 4477</span>
             </div>
             <div className="flex items-center space-x-1">
               <MapPin className="w-4 h-4" />
-              <span>Downtown Wellness Center</span>
+              <span>Darangan, Binangonan</span>
             </div>
           </div>
 
@@ -77,42 +79,37 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden bg-white border-t py-4">
+          <div className="md:hidden bg-white border-t border-[#F5C5C5] py-4">
             <nav className="flex flex-col space-y-3">
               <Link 
                 to="/" 
                 onClick={() => setIsMenuOpen(false)}
-                className={`text-left transition-colors px-2 py-1 ${isActive('/') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
               >
                 Home
               </Link>
               <Link 
                 to="/services" 
                 onClick={() => setIsMenuOpen(false)}
-                className={`text-left transition-colors px-2 py-1 ${isActive('/services') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/services') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
               >
                 Services
               </Link>
-              <Link 
-                to="/book-now" 
-                onClick={() => setIsMenuOpen(false)}
-                className={`text-left transition-colors px-2 py-1 ${isActive('/book-now') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
-              >
-                Book Now
-              </Link>
+              {BOOKING_ENABLED ? (
+                <Link
+                  to="/book-now"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`text-left transition-colors px-2 py-1 ${isActive('/book-now') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
+                >
+                  Book Now
+                </Link>
+              ) : null}
               <Link 
                 to="/contact" 
                 onClick={() => setIsMenuOpen(false)}
-                className={`text-left transition-colors px-2 py-1 ${isActive('/contact') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
+                className={`text-left transition-colors px-2 py-1 ${isActive('/contact') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
               >
                 Contact
-              </Link>
-              <Link 
-                to="/admin" 
-                onClick={() => setIsMenuOpen(false)}
-                className={`text-left transition-colors px-2 py-1 ${isActive('/admin') ? 'text-green-600 font-medium' : 'text-gray-700 hover:text-green-600'}`}
-              >
-                Admin
               </Link>
             </nav>
           </div>
@@ -123,3 +120,4 @@ const Header = () => {
 };
 
 export default Header;
+

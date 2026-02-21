@@ -1,18 +1,22 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { MapPin, Phone, Mail, Clock, Car, Wifi } from 'lucide-react';
+import { MapPin, Phone, Clock, Car, Wifi } from 'lucide-react';
 
 const Contact = () => {
+  const address = '1 Riverside 1, Darangan, Binangonan, 1940 Rizal, Philippines';
+  const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(address)}&z=16&output=embed`;
+  const mapLinkUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+
   return (
-    <section id="contact" className="py-20 bg-gradient-to-b from-green-50 to-white">
+    <section id="contact" className="py-20 bg-white">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-4">
-            Visit <span className="font-bold text-green-600">Serenity Spa</span>
+            Visit <span className="font-bold text-[#F1B2B5]">Doce-Amor Wellness Spa</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Located in the heart of downtown, our tranquil oasis awaits you. 
-            We're here to make your wellness journey as seamless as possible.
+            Visit us at 1 Riverside 1, Darangan, Binangonan, Rizal, Philippines.
+            We are here to make your wellness journey as seamless as possible.
           </p>
         </div>
 
@@ -22,15 +26,15 @@ const Contact = () => {
             <Card className="spa-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl">
-                  <MapPin className="w-6 h-6 text-green-600" />
+                  <MapPin className="w-6 h-6 text-[#F1B2B5]" />
                   Location & Address
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 mb-2">Downtown Wellness Center</p>
+                <p className="text-gray-700 mb-2">Doce-Amor Wellness Spa</p>
                 <p className="text-gray-600">
-                  123 Serenity Boulevard, Suite 200<br />
-                  Wellness District, City 12345
+                  1 Riverside 1, Darangan,<br />
+                  Binangonan, 1940 Rizal, Philippines
                 </p>
               </CardContent>
             </Card>
@@ -38,18 +42,14 @@ const Contact = () => {
             <Card className="spa-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl">
-                  <Phone className="w-6 h-6 text-green-600" />
-                  Phone & Email
+                  <Phone className="w-6 h-6 text-[#F1B2B5]" />
+                  Phone
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent>
                 <div className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-green-500" />
-                  <span className="text-gray-700">(555) 123-4567</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-green-500" />
-                  <span className="text-gray-700">info@serenityspa.com</span>
+                  <Phone className="w-4 h-4 text-[#F1B2B5]" />
+                  <span className="text-gray-700">0977 240 4477</span>
                 </div>
               </CardContent>
             </Card>
@@ -57,23 +57,23 @@ const Contact = () => {
             <Card className="spa-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl">
-                  <Clock className="w-6 h-6 text-green-600" />
+                  <Clock className="w-6 h-6 text-[#F1B2B5]" />
                   Hours of Operation
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 text-gray-700">
                   <div className="flex justify-between">
-                    <span>Monday - Friday</span>
-                    <span>9:00 AM - 8:00 PM</span>
+                    <span>Monday - Thursday</span>
+                    <span>11:00 AM - 10:00 PM</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Saturday</span>
-                    <span>8:00 AM - 6:00 PM</span>
+                    <span>Friday</span>
+                    <span>11:00 AM - 11:00 PM</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Sunday</span>
-                    <span>10:00 AM - 5:00 PM</span>
+                    <span>Saturday - Sunday</span>
+                    <span>11:00 AM - 11:00 PM</span>
                   </div>
                 </div>
               </CardContent>
@@ -82,49 +82,52 @@ const Contact = () => {
             <Card className="spa-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-3 text-xl">
-                  <Car className="w-6 h-6 text-green-600" />
+                  <Car className="w-6 h-6 text-[#F1B2B5]" />
                   Amenities
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
                   <div className="flex items-center gap-2">
-                    <Car className="w-4 h-4 text-green-500" />
-                    <span>Free Parking</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Wifi className="w-4 h-4 text-green-500" />
+                    <Wifi className="w-4 h-4 text-[#F1B2B5]" />
                     <span>Free WiFi</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-green-500 rounded-full flex-shrink-0"></span>
+                    <span className="w-4 h-4 bg-[#F1B2B5] rounded-full flex-shrink-0"></span>
                     <span>Relaxation Lounge</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-green-500 rounded-full flex-shrink-0"></span>
-                    <span>Refreshment Bar</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Map Placeholder */}
+          {/* Interactive Map */}
           <div className="lg:mt-0">
             <Card className="spa-card h-full">
               <CardContent className="p-0 h-full min-h-[500px]">
-                <div className="w-full h-full bg-gradient-to-br from-green-100 to-green-200 rounded-lg flex items-center justify-center">
-                  <div className="text-center text-green-700">
-                    <MapPin className="w-16 h-16 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold mb-2">Interactive Map</h3>
-                    <p className="text-green-600">
-                      Detailed directions and location map<br />
-                      would be integrated here
-                    </p>
-                  </div>
+                <div className="w-full h-full rounded-lg overflow-hidden">
+                  <iframe
+                    title="Doce-Amor Wellness Spa Location"
+                    src={mapEmbedUrl}
+                    className="w-full h-full min-h-[500px] border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
                 </div>
               </CardContent>
             </Card>
+            <p className="mt-3 text-sm text-gray-600">
+              Need directions?{' '}
+              <a
+                href={mapLinkUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#F1B2B5] hover:text-[#e7a1a5] underline"
+              >
+                Open in Google Maps
+              </a>
+            </p>
           </div>
         </div>
       </div>
@@ -133,3 +136,5 @@ const Contact = () => {
 };
 
 export default Contact;
+
+
