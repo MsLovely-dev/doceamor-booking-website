@@ -197,7 +197,7 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
           { Service: "Diamond Peel Facial", M: "PHP 700", NM: "PHP 750" },
           { Service: "Tightening Facial Treatment", M: "PHP 650", NM: "PHP 700" },
           { Service: "Acne Marks Facial Treatment", M: "PHP 650", NM: "PHP 700" },
-          { Service: "PDT (Add-on)", M: "PHP 200", NM: "PHP 250" },
+          { Service: "PDT (Photodynamic Therapy)", M: "PHP 200", NM: "PHP 250" },
         ],
       },
       {
@@ -211,7 +211,7 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
         ],
       },
       {
-        title: "Facial Whitening",
+        title: "Facial Whitening Treatment",
         columns: ["Service", "Price"],
         rows: [
           { Service: "IPL Skin Rejuvenating Treatment", Price: "PHP 1550" },
@@ -240,7 +240,7 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
         ],
       },
       {
-        title: "IPL Hair Removal",
+        title: "IPL Hair Removal Treatment",
         columns: ["Service", "Price"],
         rows: [
           { Service: "IPL Underarms", Price: "PHP 500" },
@@ -253,19 +253,19 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
         ],
       },
       {
-        title: "IPL Packages",
+        title: "Packages",
         columns: ["Service", "Price"],
         rows: [
           { Service: "IPL UA - 12 Sessions", Price: "PHP 4999" },
           { Service: "Unlimited Lifetime UA Sessions", Price: "PHP 20000" },
-          { Service: "10 IPL + 5 Intensive Whitening (Cash)", Price: "PHP 6999" },
-          { Service: "10 IPL + 5 Intensive Whitening (Installment)", Price: "PHP 7500" },
+          { Service: "10 IPL + 5 Intensive Whitening Package (Cash)", Price: "PHP 6999" },
+          { Service: "10 IPL + 5 Intensive Whitening Package (Installment Basis*)", Price: "PHP 7500" },
         ],
       },
     ],
   },
   {
-    title: "Other Services",
+    title: "Non-invasive Treatments",
     groups: [
       {
         title: "Whitening Treatments",
@@ -289,6 +289,15 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
           { Service: "RF Lower Belly", Price: "PHP 550" },
           { Service: "RF Upper Belly", Price: "PHP 550" },
           { Service: "RF Whole Belly", Price: "PHP 1000" },
+        ],
+      },
+      {
+        title: "Warts Removal",
+        columns: ["Service", "Price"],
+        rows: [
+          { Service: "Per Piece ( Big Size )", Price: "PHP 299" },
+          { Service: "Per Area Except Big Size", Price: "PHP 599" },
+          { Service: "Unlimited Face and Neck", Price: "PHP 1499" },
         ],
       },
     ],
@@ -353,7 +362,7 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
           {
             Service: "Anti-Stress Package",
             M: "PHP 899",
-            NM: "PHP 999",
+            NM: "PHP 1099",
             Description: "Classic Foot Spa + 15mins Sauna + 90mins Swedish Massage",
           },
           {
@@ -385,6 +394,12 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
             M: "PHP 1399",
             NM: "PHP 1599",
             Description: "Exfoliating Body Scrub + 15mins Sauna + Combination Massage + Classic Facial",
+          },
+          {
+            Service: "4+1 Barakada Package",
+            M: "-",
+            NM: "-",
+            Description: "Avail any 4 massages and get 1 free Swedish Massage (available from M-F | 1pm-5pm)",
           },
         ],
       },
