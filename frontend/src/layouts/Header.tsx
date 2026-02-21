@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Phone, MapPin } from 'lucide-react';
 import { BOOKING_ENABLED } from '@/config/features';
+import doceamorIcon from '@/assets/icons/doceamor-icon.png';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -17,7 +18,11 @@ const Header = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] rounded-full"></div>
+            <img
+              src={doceamorIcon}
+              alt="Doce-Amor logo"
+              className="h-9 w-9 rounded-full object-cover"
+            />
             <h1 className="text-2xl font-bold text-[#F1B2B5]">Doce-Amor Wellness Spa</h1>
           </Link>
 
