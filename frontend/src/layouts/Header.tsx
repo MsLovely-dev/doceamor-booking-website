@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Phone, MapPin } from 'lucide-react';
+import { BOOKING_ENABLED } from '@/config/features';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -34,12 +35,14 @@ const Header = () => {
             >
               Services
             </Link>
-            <Link 
-              to="/book-now" 
-              className={`transition-colors ${isActive('/book-now') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
-            >
-              Book Now
-            </Link>
+            {BOOKING_ENABLED ? (
+              <Link
+                to="/book-now"
+                className={`transition-colors ${isActive('/book-now') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
+              >
+                Book Now
+              </Link>
+            ) : null}
             <Link 
               to="/contact" 
               className={`transition-colors ${isActive('/contact') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
@@ -87,13 +90,15 @@ const Header = () => {
               >
                 Services
               </Link>
-              <Link 
-                to="/book-now" 
-                onClick={() => setIsMenuOpen(false)}
-                className={`text-left transition-colors px-2 py-1 ${isActive('/book-now') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
-              >
-                Book Now
-              </Link>
+              {BOOKING_ENABLED ? (
+                <Link
+                  to="/book-now"
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`text-left transition-colors px-2 py-1 ${isActive('/book-now') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
+                >
+                  Book Now
+                </Link>
+              ) : null}
               <Link 
                 to="/contact" 
                 onClick={() => setIsMenuOpen(false)}

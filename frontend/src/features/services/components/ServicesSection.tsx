@@ -15,6 +15,7 @@ import {
   Waves,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { BOOKING_ENABLED } from "@/config/features";
 
 const iconMap: Record<string, JSX.Element> = {
   "Body Massage": <Waves className="w-5 h-5" />,
@@ -277,15 +278,17 @@ const ServicesSection = () => {
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="flex justify-end">
-                                      <Button
-                                        type="button"
-                                        onClick={() => navigate(`/book-now?service=${encodeURIComponent(row.Service)}`)}
-                                        className="h-8 bg-[#F1B2B5] px-3 text-xs text-white hover:bg-[#e4a0a6]"
-                                      >
-                                        Book now
-                                      </Button>
-                                    </div>
+                                    {BOOKING_ENABLED ? (
+                                      <div className="flex justify-end">
+                                        <Button
+                                          type="button"
+                                          onClick={() => navigate(`/book-now?service=${encodeURIComponent(row.Service)}`)}
+                                          className="h-8 bg-[#F1B2B5] px-3 text-xs text-white hover:bg-[#e4a0a6]"
+                                        >
+                                          Book now
+                                        </Button>
+                                      </div>
+                                    ) : null}
                                   </div>
                                 </div>
                               ))}

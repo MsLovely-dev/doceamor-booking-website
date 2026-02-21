@@ -1,6 +1,7 @@
 
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { BOOKING_ENABLED } from '@/config/features';
 
 const Hero = () => {
   const navigate = useNavigate();
@@ -29,12 +30,14 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button 
-              onClick={() => navigate('/book-now')}
-              className="spa-button text-lg px-8 py-4"
-            >
-              Book Your Experience
-            </Button>
+            {BOOKING_ENABLED ? (
+              <Button
+                onClick={() => navigate('/book-now')}
+                className="spa-button text-lg px-8 py-4"
+              >
+                Book Your Experience
+              </Button>
+            ) : null}
             <Button 
               variant="outline" 
               className="text-lg px-8 py-4 border-[#F5C5C5] text-[#BEBEBE] hover:bg-[#FFF7F8]"

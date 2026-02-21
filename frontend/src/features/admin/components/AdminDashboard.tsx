@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Calendar, Clock, User, Mail, Phone, CheckCircle, XCircle, AlertCircle, Scissors, Users, LayoutGrid, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { BOOKING_ENABLED } from '@/config/features';
 import {
   AdminBooking,
   Availability,
@@ -82,7 +83,9 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
     price: string;
     is_active: boolean;
   }>>({});
-  const [activeAdminSection, setActiveAdminSection] = useState<'slots' | 'staff' | 'bookings' | 'services'>(initialSection);
+  const [activeAdminSection, setActiveAdminSection] = useState<'slots' | 'staff' | 'bookings' | 'services'>(
+    BOOKING_ENABLED || initialSection !== 'bookings' ? initialSection : 'services'
+  );
 
   const toDateTimeLocal = (date: Date) => {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -90,13 +93,14 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   };
 
   useEffect(() => {
-    setActiveAdminSection(initialSection);
+    const section = BOOKING_ENABLED || initialSection !== 'bookings' ? initialSection : 'services';
+    setActiveAdminSection(section);
     const sectionId =
-      initialSection === 'slots'
+      section === 'slots'
         ? 'admin-slots'
-        : initialSection === 'staff'
+        : section === 'staff'
           ? 'admin-staff'
-          : initialSection === 'services'
+          : section === 'services'
             ? 'admin-services'
             : 'admin-bookings';
     setTimeout(() => {
@@ -105,6 +109,7 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   }, [initialSection]);
 
   const refreshBookings = async () => {
+    if (!BOOKING_ENABLED) return;
     setBookingsLoading(true);
     try {
       const bookingData = await fetchAdminBookings();
@@ -115,16 +120,20 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   };
 
   const loadAdminData = async () => {
-    const [serviceData, staffData, availabilityData, bookingData] = await Promise.all([
+    const [serviceData, staffData, availabilityData] = await Promise.all([
       fetchServicesAdmin(),
       fetchStaff(),
       fetchAvailabilityAdmin(),
-      fetchAdminBookings(),
     ]);
     setServices(serviceData);
     setStaff(staffData);
     setAvailabilityRows(availabilityData);
-    setBookings(bookingData);
+    if (BOOKING_ENABLED) {
+      const bookingData = await fetchAdminBookings();
+      setBookings(bookingData);
+    } else {
+      setBookings([]);
+    }
   };
 
   const refreshAvailabilityRows = async () => {
@@ -499,7 +508,7 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
     { key: 'slots', label: 'Slot Setup', path: '/admin/slots', icon: LayoutGrid },
     { key: 'staff', label: 'Staff', path: '/admin/staff', icon: Users },
     { key: 'services', label: 'Services', path: '/admin/services', icon: Scissors },
-    { key: 'bookings', label: 'Bookings', path: '/admin/bookings', icon: Calendar },
+    ...(BOOKING_ENABLED ? [{ key: 'bookings', label: 'Bookings', path: '/admin/bookings', icon: Calendar }] : []),
   ];
 
   const sectionHeading = {
@@ -510,6 +519,11 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   }[activeAdminSection];
 
   const navigateSection = (section: 'slots' | 'staff' | 'services' | 'bookings') => {
+    if (!BOOKING_ENABLED && section === 'bookings') {
+      setActiveAdminSection('services');
+      navigate('/admin/services');
+      return;
+    }
     setActiveAdminSection(section);
     const target = adminMenuItems.find((item) => item.key === section);
     if (target) {

@@ -1,4 +1,5 @@
 import { Heart, MapPin, Phone, Mail, Instagram, Facebook, Twitter } from "lucide-react";
+import { BOOKING_ENABLED } from "@/config/features";
 
 const Footer = () => {
   return (
@@ -25,7 +26,7 @@ const Footer = () => {
             <ul className="space-y-2 text-[#6b5b62]">
               <li><a href="#home" className="hover:text-[#F1B2B5] transition-colors">Home</a></li>
               <li><a href="#services" className="hover:text-[#F1B2B5] transition-colors">Services</a></li>
-              <li><a href="#booking" className="hover:text-[#F1B2B5] transition-colors">Book Now</a></li>
+              {BOOKING_ENABLED ? <li><a href="#booking" className="hover:text-[#F1B2B5] transition-colors">Book Now</a></li> : null}
               <li><a href="#contact" className="hover:text-[#F1B2B5] transition-colors">Contact</a></li>
             </ul>
           </div>
