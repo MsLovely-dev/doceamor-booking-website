@@ -18,7 +18,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] rounded-full"></div>
-            <h1 className="text-2xl font-bold text-[#F1B2B5]">Doce-Amore Wellness Spa</h1>
+            <h1 className="text-2xl font-bold text-[#F1B2B5]">Doce-Amor Wellness Spa</h1>
           </Link>
 
           {/* Desktop Navigation */}
@@ -55,11 +55,11 @@ const Header = () => {
           <div className="hidden lg:flex items-center space-x-4 text-sm text-gray-600">
             <div className="flex items-center space-x-1">
               <Phone className="w-4 h-4" />
-              <span>(555) 123-4567</span>
+              <span>0977 240 4477</span>
             </div>
             <div className="flex items-center space-x-1">
               <MapPin className="w-4 h-4" />
-              <span>Downtown Wellness Center</span>
+              <span>Darangan, Binangonan</span>
             </div>
           </div>
 

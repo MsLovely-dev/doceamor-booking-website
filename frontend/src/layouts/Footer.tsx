@@ -1,4 +1,4 @@
-import { Heart, MapPin, Phone, Mail, Instagram, Facebook, Twitter } from "lucide-react";
+import { Heart, MapPin, Phone, Instagram, Facebook, Twitter } from "lucide-react";
 import { BOOKING_ENABLED } from "@/config/features";
 
 const Footer = () => {
@@ -9,7 +9,7 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] rounded-full"></div>
-              <h3 className="text-2xl font-bold">Doce-Amore Wellness Spa</h3>
+              <h3 className="text-2xl font-bold">Doce-Amor Wellness Spa</h3>
             </div>
             <p className="text-[#6b5b62] leading-relaxed">
               Your sanctuary for wellness, beauty, and tranquility. Discover the perfect balance of luxury and serenity.
@@ -46,15 +46,11 @@ const Footer = () => {
             <div className="space-y-3 text-[#6b5b62]">
               <div className="flex items-center space-x-2">
                 <MapPin className="w-4 h-4 text-[#F1B2B5]" />
-                <span className="text-sm">123 Serenity Boulevard, Suite 200</span>
+                <span className="text-sm">1 Riverside 1, Darangan, Binangonan, 1940 Rizal, Philippines</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="w-4 h-4 text-[#F1B2B5]" />
-                <span className="text-sm">(555) 123-4567</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Mail className="w-4 h-4 text-[#F1B2B5]" />
-                <span className="text-sm">info@serenityspa.com</span>
+                <span className="text-sm">0977 240 4477</span>
               </div>
             </div>
           </div>
@@ -65,7 +61,7 @@ const Footer = () => {
             Made with <Heart className="w-4 h-4 text-[#F1B2B5]" /> for your wellness journey
           </p>
           <p className="text-[#7d6d74] text-sm mt-2">
-            Copyright 2024 Doce-Amore Wellness Spa. All rights reserved.
+            Copyright 2024 Doce-Amor Wellness Spa. All rights reserved.
           </p>
         </div>
       </div>
