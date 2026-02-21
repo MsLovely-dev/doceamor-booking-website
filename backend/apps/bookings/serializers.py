@@ -11,6 +11,36 @@ class StaffSerializer(serializers.ModelSerializer):
 
 
 class AvailabilitySerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        staff = attrs.get("staff") or getattr(self.instance, "staff", None)
+        service = attrs.get("service") or getattr(self.instance, "service", None)
+        start_time = attrs.get("start_time") or getattr(self.instance, "start_time", None)
+        end_time = attrs.get("end_time") or getattr(self.instance, "end_time", None)
+
+        if start_time and end_time and end_time <= start_time:
+            raise serializers.ValidationError({"end_time": "End time must be after start time."})
+
+        if service and not service.is_active:
+            raise serializers.ValidationError({"service": "Selected service is inactive."})
+
+        if staff and not staff.is_active:
+            raise serializers.ValidationError({"staff": "Selected staff is inactive."})
+
+        if staff and start_time and end_time:
+            overlap_qs = Availability.objects.filter(
+                staff=staff,
+                start_time__lt=end_time,
+                end_time__gt=start_time,
+            )
+            if self.instance:
+                overlap_qs = overlap_qs.exclude(pk=self.instance.pk)
+            if overlap_qs.exists():
+                raise serializers.ValidationError(
+                    {"non_field_errors": ["Staff has overlapping availability in this time range."]}
+                )
+
+        return attrs
+
     class Meta:
         model = Availability
         fields = [

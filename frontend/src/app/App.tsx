@@ -10,6 +10,10 @@ import ServicesPage from "@/features/services/pages/ServicesPage";
 import BookNow from "@/features/booking/pages/BookNowPage";
 import ContactPage from "@/features/contact/pages/ContactPage";
 import Admin from "@/features/admin/pages/AdminPage";
+import AdminSlotsPage from "@/features/admin/pages/AdminSlotsPage";
+import AdminStaffPage from "@/features/admin/pages/AdminStaffPage";
+import AdminBookingsPage from "@/features/admin/pages/AdminBookingsPage";
+import AdminServicesPage from "@/features/admin/pages/AdminServicesPage";
 import NotFound from "@/app/NotFoundPage";
 
 const queryClient = new QueryClient();
@@ -27,6 +31,10 @@ const App = () => (
             <Route path="book-now" element={<BookNow />} />
             <Route path="contact" element={<ContactPage />} />
             <Route path="admin" element={<Admin />} />
+            <Route path="admin/slots" element={<AdminSlotsPage />} />
+            <Route path="admin/staff" element={<AdminStaffPage />} />
+            <Route path="admin/services" element={<AdminServicesPage />} />
+            <Route path="admin/bookings" element={<AdminBookingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -19,7 +19,7 @@ const Hero = () => {
           <h1 className="text-5xl md:text-7xl font-light text-gray-800 mb-6 leading-tight">
             Welcome to <br />
             <span className="font-bold bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] bg-clip-text text-transparent">
-              Serenity Spa
+              Doce-Amore Wellness Spa
             </span>
           </h1>
           

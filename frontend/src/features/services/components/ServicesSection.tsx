@@ -14,6 +14,7 @@ import {
   SprayCan,
   Waves,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const iconMap: Record<string, JSX.Element> = {
   "Body Massage": <Waves className="w-5 h-5" />,
@@ -75,6 +76,7 @@ const getSectionImage = (sectionTitle: string) => {
 };
 
 const ServicesSection = () => {
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState(SERVICE_CATALOG[0]?.title ?? "");
   const [query, setQuery] = useState("");
   const [expandedRowsByGroup, setExpandedRowsByGroup] = useState<Record<string, boolean>>({});
@@ -258,20 +260,31 @@ const ServicesSection = () => {
                                   key={`${group.title}-${row.Service}`}
                                   className="rounded-xl border border-[#F5C5C5] bg-white p-3"
                                 >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <p className="flex-1 text-sm font-medium leading-5 text-gray-800">{row.Service}</p>
-                                    <div className="max-w-[58%] flex-shrink-0 overflow-x-auto">
-                                      <div className="flex items-center justify-end gap-1.5 whitespace-nowrap pl-1">
-                                        {chipColumns.map((column) => (
-                                          <span
-                                            key={`${row.Service}-${column}`}
-                                            className="inline-flex items-center gap-1 rounded-md border border-[#F5C5C5] bg-[#F5C5C5]/60 px-2 py-1 text-[11px] font-medium text-gray-700"
-                                          >
-                                            <span className="text-[#8a8a8a]">{column}:</span>
-                                            <span>{row[column] ?? "-"}</span>
-                                          </span>
-                                        ))}
+                                  <div className="space-y-2.5">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <p className="flex-1 text-sm font-medium leading-5 text-gray-800">{row.Service}</p>
+                                      <div className="max-w-[58%] flex-shrink-0 overflow-x-auto">
+                                        <div className="flex items-center justify-end gap-1.5 whitespace-nowrap pl-1">
+                                          {chipColumns.map((column) => (
+                                            <span
+                                              key={`${row.Service}-${column}`}
+                                              className="inline-flex items-center gap-1 rounded-md border border-[#F5C5C5] bg-[#F5C5C5]/60 px-2 py-1 text-[11px] font-medium text-gray-700"
+                                            >
+                                              <span className="text-[#8a8a8a]">{column}:</span>
+                                              <span>{row[column] ?? "-"}</span>
+                                            </span>
+                                          ))}
+                                        </div>
                                       </div>
+                                    </div>
+                                    <div className="flex justify-end">
+                                      <Button
+                                        type="button"
+                                        onClick={() => navigate(`/book-now?service=${encodeURIComponent(row.Service)}`)}
+                                        className="h-8 bg-[#F1B2B5] px-3 text-xs text-white hover:bg-[#e4a0a6]"
+                                      >
+                                        Book now
+                                      </Button>
                                     </div>
                                   </div>
                                 </div>

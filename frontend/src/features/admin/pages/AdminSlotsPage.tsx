@@ -1,13 +1,11 @@
-
 import AdminDashboard from '@/features/admin/components/AdminDashboard';
 
-const Admin = () => {
+const AdminSlotsPage = () => {
   return (
     <div className="min-h-screen pt-16">
-      <AdminDashboard initialSection="bookings" />
+      <AdminDashboard initialSection="slots" />
     </div>
   );
 };
 
-export default Admin;
-
+export default AdminSlotsPage;

@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar, Clock, Mail, Phone, ShieldCheck, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from "react-router-dom";
+import { SERVICE_CATALOG } from "@/features/services/data/catalog";
 import {
   Availability,
   createBooking,
@@ -23,8 +25,19 @@ interface ServiceOption {
   price: string;
 }
 
+interface SelectServiceOption {
+  key: string;
+  label: string;
+  value: string;
+}
+
+const normalizeName = (value: string) => value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+
+const tokenize = (value: string) => normalizeName(value).split(" ").filter(Boolean);
+
 const BookingForm = () => {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
@@ -60,6 +73,91 @@ const BookingForm = () => {
     guestToken: "",
   });
   const [trackingResult, setTrackingResult] = useState<string>("");
+  const [servicePrefillApplied, setServicePrefillApplied] = useState(false);
+
+  const catalogServiceMeta = useMemo(() => {
+    const map = new Map<string, { category: string; group: string; order: number }>();
+    let order = 0;
+
+    for (const section of SERVICE_CATALOG) {
+      for (const group of section.groups) {
+        for (const row of group.rows) {
+          const normalized = normalizeName(row.Service);
+          if (!map.has(normalized)) {
+            map.set(normalized, {
+              category: section.title,
+              group: group.title,
+              order: order++,
+            });
+          }
+        }
+      }
+    }
+
+    return map;
+  }, []);
+
+  const sortedServices = useMemo(() => {
+    const withOrder = services.map((service) => {
+      const normalized = normalizeName(service.name);
+      const exactMeta = catalogServiceMeta.get(normalized);
+
+      if (exactMeta) {
+        return { service, order: exactMeta.order };
+      }
+
+      const partialMeta = Array.from(catalogServiceMeta.entries()).find(
+        ([catalogName]) => catalogName.includes(normalized) || normalized.includes(catalogName)
+      )?.[1];
+
+      return { service, order: partialMeta?.order ?? Number.MAX_SAFE_INTEGER };
+    });
+
+    return withOrder
+      .sort((a, b) => {
+        if (a.order !== b.order) return a.order - b.order;
+        return a.service.name.localeCompare(b.service.name);
+      })
+      .map((item) => item.service);
+  }, [catalogServiceMeta, services]);
+
+  const serviceOptions = useMemo<SelectServiceOption[]>(() => {
+    return sortedServices.map<SelectServiceOption>((service) => ({
+      key: `backend-${service.id}`,
+      label: `${service.name} - ${service.duration_minutes} min - PHP ${service.price}`,
+      value: String(service.id),
+    }));
+  }, [sortedServices]);
+
+  const findBestServiceMatch = (requestedService: string, options: ServiceOption[]) => {
+    const normalizedRequested = normalizeName(requestedService);
+    const requestedTokens = tokenize(requestedService);
+
+    const exact = options.find((service) => normalizeName(service.name) === normalizedRequested);
+    if (exact) return exact;
+
+    const partial = options.find((service) => {
+      const normalizedService = normalizeName(service.name);
+      return normalizedService.includes(normalizedRequested) || normalizedRequested.includes(normalizedService);
+    });
+    if (partial) return partial;
+
+    let best: { service: ServiceOption; score: number } | null = null;
+    for (const service of options) {
+      const serviceTokens = tokenize(service.name);
+      const overlap = requestedTokens.filter((token) => serviceTokens.includes(token)).length;
+      const score = overlap / Math.max(requestedTokens.length, serviceTokens.length, 1);
+      if (!best || score > best.score) {
+        best = { service, score };
+      }
+    }
+
+    if (best && best.score >= 0.5) {
+      return best.service;
+    }
+
+    return null;
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -77,8 +175,54 @@ const BookingForm = () => {
   }, [toast]);
 
   useEffect(() => {
+    if (servicePrefillApplied || services.length === 0) return;
+
+    const requestedService = searchParams.get("service");
+    if (!requestedService) {
+      setServicePrefillApplied(true);
+      return;
+    }
+
+    const matchedService = findBestServiceMatch(requestedService, services);
+
+    if (matchedService) {
+      setFormData((prev) => ({
+        ...prev,
+        serviceId: String(matchedService.id),
+        availabilityId: "",
+      }));
+      toast({
+        title: "Service selected",
+        description: `${matchedService.name} is preselected from Services Catalog.`,
+      });
+    } else {
+      toast({
+        title: "Service not found",
+        description: "Selected service from catalog is not yet configured for booking.",
+        variant: "destructive",
+      });
+    }
+
+    setServicePrefillApplied(true);
+  }, [searchParams, servicePrefillApplied, services, toast]);
+
+  useEffect(() => {
+    if (!formData.serviceId) return;
+
+    const exists = services.some((service) => String(service.id) === formData.serviceId);
+    if (!exists) {
+      setFormData((prev) => ({ ...prev, serviceId: "", availabilityId: "" }));
+    }
+  }, [formData.serviceId, services]);
+
+  const selectedServiceIsBookable = useMemo(
+    () => services.some((service) => String(service.id) === formData.serviceId),
+    [formData.serviceId, services],
+  );
+
+  useEffect(() => {
     const run = async () => {
-      if (!formData.serviceId || !formData.date) {
+      if (!formData.serviceId || !selectedServiceIsBookable || !formData.date) {
         setAvailability([]);
         setFormData((prev) => ({ ...prev, availabilityId: "" }));
         return;
@@ -94,12 +238,45 @@ const BookingForm = () => {
       }
     };
     void run();
-  }, [formData.serviceId, formData.date, toast]);
+  }, [formData.serviceId, formData.date, selectedServiceIsBookable, toast]);
 
   const selectedAvailability = useMemo(
     () => availability.find((slot) => String(slot.id) === formData.availabilityId),
     [availability, formData.availabilityId],
   );
+
+  const availabilityOptions = useMemo(() => {
+    const sorted = [...availability].sort(
+      (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+    );
+    return sorted.map((slot) => ({
+      id: String(slot.id),
+      label: `${new Date(slot.start_time).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })} - ${new Date(slot.end_time).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`,
+    }));
+  }, [availability]);
+
+  const slotPlaceholder = useMemo(() => {
+    if (!formData.serviceId) return "Select service first";
+    if (!selectedServiceIsBookable) return "Service not available for booking";
+    if (!formData.date) return "Select date first";
+    if (slotsLoading) return "Loading slots...";
+    if (availability.length === 0) return "No slots available";
+    return "Select slot";
+  }, [availability.length, formData.date, formData.serviceId, selectedServiceIsBookable, slotsLoading]);
+
+  useEffect(() => {
+    if (!formData.availabilityId) return;
+    const exists = availability.some((slot) => String(slot.id) === formData.availabilityId);
+    if (!exists) {
+      setFormData((prev) => ({ ...prev, availabilityId: "" }));
+    }
+  }, [availability, formData.availabilityId]);
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -211,13 +388,18 @@ const BookingForm = () => {
                   <Select value={formData.serviceId} onValueChange={(value) => handleChange("serviceId", value)}>
                     <SelectTrigger><SelectValue placeholder={servicesLoading ? "Loading services..." : "Choose service"} /></SelectTrigger>
                     <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service.id} value={String(service.id)}>
-                          {service.name} - {service.duration_minutes} min - PHP {service.price}
+                      {serviceOptions.map((option) => (
+                        <SelectItem key={option.key} value={option.value}>
+                          {option.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {!servicesLoading && sortedServices.length === 0 ? (
+                    <p className="text-xs text-[#9a9a9a]">
+                      No services available yet. Please add services from admin.
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -234,16 +416,34 @@ const BookingForm = () => {
                   </div>
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2"><Clock className="w-4 h-4" />Available Slot</Label>
-                    <Select value={formData.availabilityId} onValueChange={(value) => handleChange("availabilityId", value)}>
-                      <SelectTrigger><SelectValue placeholder={slotsLoading ? "Loading slots..." : "Select slot"} /></SelectTrigger>
+                    <Select
+                      value={formData.availabilityId}
+                      onValueChange={(value) => handleChange("availabilityId", value)}
+                      disabled={!formData.serviceId || !selectedServiceIsBookable || !formData.date || slotsLoading}
+                    >
+                      <SelectTrigger><SelectValue placeholder={slotPlaceholder} /></SelectTrigger>
                       <SelectContent>
-                        {availability.map((slot) => (
-                          <SelectItem key={slot.id} value={String(slot.id)}>
-                            {new Date(slot.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {availabilityOptions.map((slot) => (
+                          <SelectItem key={slot.id} value={slot.id}>
+                            {slot.label}
                           </SelectItem>
                         ))}
+                        {!slotsLoading && availability.length === 0 ? (
+                          <div className="px-2 py-2 text-xs text-[#8a8a8a]">
+                            {!formData.serviceId
+                              ? "Choose a service to view slots."
+                              : !selectedServiceIsBookable
+                                ? "Selected service is not yet available for booking."
+                                : !formData.date
+                                  ? "Choose a date to view slots."
+                                  : "No open slots for this date. Try another date."}
+                          </div>
+                        ) : null}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-[#9a9a9a]">
+                      Slots come from admin-created availability and show only future, unbooked schedules for the selected service/date.
+                    </p>
                   </div>
                 </div>
 

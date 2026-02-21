@@ -6,6 +6,7 @@ export interface Service {
   description: string;
   duration_minutes: number;
   price: string;
+  is_active?: boolean;
 }
 
 export interface Availability {
@@ -14,6 +15,16 @@ export interface Availability {
   service: number;
   start_time: string;
   end_time: string;
+  is_booked?: boolean;
+  created_at?: string;
+}
+
+export interface Staff {
+  id: number;
+  full_name: string;
+  email: string;
+  phone: string;
+  is_active: boolean;
 }
 
 export interface CreateBookingPayload {
@@ -65,9 +76,74 @@ export async function fetchServices(): Promise<Service[]> {
   return apiRequest<Service[]>("/api/services/");
 }
 
+export async function fetchServicesAdmin(): Promise<Service[]> {
+  return apiRequest<Service[]>("/api/services/?include_inactive=true");
+}
+
+export async function createService(payload: {
+  name: string;
+  description?: string;
+  duration_minutes: number;
+  price: string;
+  is_active?: boolean;
+}): Promise<Service> {
+  return apiRequest<Service>("/api/services/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateService(
+  id: number,
+  payload: Partial<{
+    name: string;
+    description: string;
+    duration_minutes: number;
+    price: string;
+    is_active: boolean;
+  }>,
+): Promise<Service> {
+  return apiRequest<Service>(`/api/services/${id}/`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchAvailabilityByServiceAndDate(serviceId: number, date: string): Promise<Availability[]> {
   const query = new URLSearchParams({ service: String(serviceId), date }).toString();
   return apiRequest<Availability[]>(`/api/bookings/availability/?${query}`);
+}
+
+export async function fetchStaff(): Promise<Staff[]> {
+  return apiRequest<Staff[]>("/api/bookings/staff/");
+}
+
+export async function createStaff(payload: {
+  full_name: string;
+  email: string;
+  phone?: string;
+  is_active?: boolean;
+}): Promise<Staff> {
+  return apiRequest<Staff>("/api/bookings/staff/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createAvailability(payload: {
+  staff: number;
+  service: number;
+  start_time: string;
+  end_time: string;
+}): Promise<Availability> {
+  return apiRequest<Availability>("/api/bookings/availability/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function createBooking(payload: CreateBookingPayload): Promise<CreateBookingResponse> {
@@ -102,4 +178,3 @@ export async function trackBookingStatus(publicId: string, payload: TrackStatusP
     body: JSON.stringify(payload),
   });
 }
-

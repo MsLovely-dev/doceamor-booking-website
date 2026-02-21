@@ -17,7 +17,7 @@ const Header = () => {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] rounded-full"></div>
-            <h1 className="text-2xl font-bold text-[#F1B2B5]">Serenity Spa</h1>
+            <h1 className="text-2xl font-bold text-[#F1B2B5]">Doce-Amore Wellness Spa</h1>
           </Link>
 
           {/* Desktop Navigation */}

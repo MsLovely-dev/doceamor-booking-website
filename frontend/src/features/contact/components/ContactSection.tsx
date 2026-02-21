@@ -8,7 +8,7 @@ const Contact = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-4">
-            Visit <span className="font-bold text-[#F1B2B5]">Serenity Spa</span>
+            Visit <span className="font-bold text-[#F1B2B5]">Doce-Amore Wellness Spa</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Located in the heart of downtown, our tranquil oasis awaits you. 

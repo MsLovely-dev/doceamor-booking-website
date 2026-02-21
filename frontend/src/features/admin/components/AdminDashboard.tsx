@@ -3,8 +3,24 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Calendar, Clock, User, Mail, Phone, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import {
+  Availability,
+  Service,
+  Staff,
+  createAvailability,
+  createService,
+  createStaff,
+  fetchServicesAdmin,
+  fetchStaff,
+  updateService,
+} from '@/features/booking/api';
 
 interface Booking {
   id: number;
@@ -19,15 +35,141 @@ interface Booking {
   createdAt: string;
 }
 
-const AdminDashboard = () => {
+interface AdminDashboardProps {
+  initialSection?: 'slots' | 'staff' | 'bookings' | 'services';
+}
+
+const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const existingToken = typeof window !== 'undefined' ? localStorage.getItem('adminBasicAuthToken') : null;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
+  const [isAdminAuthorized, setIsAdminAuthorized] = useState(Boolean(existingToken));
+  const [authChecking, setAuthChecking] = useState(false);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authForm, setAuthForm] = useState({ username: '', password: '' });
+  const [services, setServices] = useState<Service[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [slotCreating, setSlotCreating] = useState(false);
+  const [createdSlots, setCreatedSlots] = useState<Availability[]>([]);
+  const [staffCreating, setStaffCreating] = useState(false);
+  const [slotForm, setSlotForm] = useState({
+    serviceId: '',
+    staffId: '',
+    startTime: '',
+    endTime: '',
+  });
+  const [staffForm, setStaffForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+  });
+  const [serviceCreating, setServiceCreating] = useState(false);
+  const [savingServiceId, setSavingServiceId] = useState<number | null>(null);
+  const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
+  const [serviceForm, setServiceForm] = useState({
+    name: '',
+    description: '',
+    durationMinutes: '',
+    price: '',
+    isActive: true,
+  });
+  const [serviceEdits, setServiceEdits] = useState<Record<number, {
+    name: string;
+    description: string;
+    duration_minutes: string;
+    price: string;
+    is_active: boolean;
+  }>>({});
+  const [activeAdminSection, setActiveAdminSection] = useState<'slots' | 'staff' | 'bookings' | 'services'>(initialSection);
+
+  const toDateTimeLocal = (date: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
 
   useEffect(() => {
     const savedBookings = JSON.parse(localStorage.getItem('spaBookings') || '[]');
     setBookings(savedBookings);
   }, []);
+
+  useEffect(() => {
+    setActiveAdminSection(initialSection);
+    const sectionId =
+      initialSection === 'slots'
+        ? 'admin-slots'
+        : initialSection === 'staff'
+          ? 'admin-staff'
+          : initialSection === 'services'
+            ? 'admin-services'
+            : 'admin-bookings';
+    setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  }, [initialSection]);
+
+  const loadAdminData = async () => {
+    const [serviceData, staffData] = await Promise.all([fetchServicesAdmin(), fetchStaff()]);
+    setServices(serviceData);
+    setStaff(staffData.filter((member) => member.is_active));
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      const token = localStorage.getItem('adminBasicAuthToken');
+      if (!token) {
+        setIsAdminAuthorized(false);
+        return;
+      }
+      try {
+        await loadAdminData();
+        setIsAdminAuthorized(true);
+      } catch {
+        localStorage.removeItem('adminBasicAuthToken');
+        setIsAdminAuthorized(false);
+      }
+    };
+
+    void run();
+  }, []);
+
+  useEffect(() => {
+    const mapped: Record<number, {
+      name: string;
+      description: string;
+      duration_minutes: string;
+      price: string;
+      is_active: boolean;
+    }> = {};
+    for (const service of services) {
+      mapped[service.id] = {
+        name: service.name,
+        description: service.description ?? '',
+        duration_minutes: String(service.duration_minutes),
+        price: String(service.price),
+        is_active: Boolean(service.is_active ?? true),
+      };
+    }
+    setServiceEdits(mapped);
+  }, [services]);
+
+  useEffect(() => {
+    if (!slotForm.serviceId || !slotForm.startTime) return;
+    const selectedService = services.find((service) => String(service.id) === slotForm.serviceId);
+    if (!selectedService) return;
+
+    const start = new Date(slotForm.startTime);
+    if (Number.isNaN(start.getTime())) return;
+
+    const computedEnd = new Date(start.getTime() + selectedService.duration_minutes * 60 * 1000);
+    const computedEndValue = toDateTimeLocal(computedEnd);
+    const currentEnd = slotForm.endTime ? new Date(slotForm.endTime) : null;
+
+    if (!slotForm.endTime || !currentEnd || Number.isNaN(currentEnd.getTime()) || currentEnd <= start) {
+      setSlotForm((prev) => ({ ...prev, endTime: computedEndValue }));
+    }
+  }, [slotForm.serviceId, slotForm.startTime, services]);
 
   const updateBookingStatus = (id: number, status: 'confirmed' | 'cancelled') => {
     const updatedBookings = bookings.map(booking =>
@@ -75,21 +217,670 @@ const AdminDashboard = () => {
     cancelled: bookings.filter(b => b.status === 'cancelled').length,
   };
 
+  const createSlot = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!slotForm.serviceId || !slotForm.staffId || !slotForm.startTime || !slotForm.endTime) {
+      toast({ title: 'Missing fields', description: 'Complete all slot fields before creating.', variant: 'destructive' });
+      return;
+    }
+
+    if (new Date(slotForm.endTime) <= new Date(slotForm.startTime)) {
+      toast({ title: 'Invalid range', description: 'End time must be after start time.', variant: 'destructive' });
+      return;
+    }
+
+    setSlotCreating(true);
+    try {
+      const created = await createAvailability({
+        staff: Number(slotForm.staffId),
+        service: Number(slotForm.serviceId),
+        start_time: slotForm.startTime,
+        end_time: slotForm.endTime,
+      });
+      setCreatedSlots((prev) => [created, ...prev].slice(0, 10));
+      setSlotForm((prev) => ({ ...prev, startTime: '', endTime: '' }));
+      toast({ title: 'Slot created', description: 'Availability slot saved successfully.' });
+    } catch (error) {
+      toast({ title: 'Create slot failed', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setSlotCreating(false);
+    }
+  };
+
+  const addStaffMember = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!staffForm.fullName || !staffForm.email) {
+      toast({ title: 'Missing fields', description: 'Staff name and email are required.', variant: 'destructive' });
+      return;
+    }
+
+    setStaffCreating(true);
+    try {
+      const created = await createStaff({
+        full_name: staffForm.fullName,
+        email: staffForm.email,
+        phone: staffForm.phone,
+        is_active: true,
+      });
+      setStaff((prev) => [...prev, created].sort((a, b) => a.full_name.localeCompare(b.full_name)));
+      setStaffForm({ fullName: '', email: '', phone: '' });
+      toast({ title: 'Staff added', description: `${created.full_name} is now available for slot assignment.` });
+    } catch (error) {
+      toast({ title: 'Add staff failed', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setStaffCreating(false);
+    }
+  };
+
+  const createNewService = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!serviceForm.name || !serviceForm.durationMinutes || !serviceForm.price) {
+      toast({ title: 'Missing fields', description: 'Name, duration, and price are required.', variant: 'destructive' });
+      return;
+    }
+
+    setServiceCreating(true);
+    try {
+      const created = await createService({
+        name: serviceForm.name,
+        description: serviceForm.description,
+        duration_minutes: Number(serviceForm.durationMinutes),
+        price: serviceForm.price,
+        is_active: serviceForm.isActive,
+      });
+      setServices((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setServiceForm({
+        name: '',
+        description: '',
+        durationMinutes: '',
+        price: '',
+        isActive: true,
+      });
+      toast({ title: 'Service created', description: `${created.name} was added.` });
+    } catch (error) {
+      toast({ title: 'Create service failed', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setServiceCreating(false);
+    }
+  };
+
+  const saveService = async (serviceId: number) => {
+    const edit = serviceEdits[serviceId];
+    if (!edit) return;
+    if (!edit.name || !edit.duration_minutes || !edit.price) {
+      toast({ title: 'Missing fields', description: 'Name, duration, and price are required.', variant: 'destructive' });
+      return;
+    }
+
+    setSavingServiceId(serviceId);
+    try {
+      const updated = await updateService(serviceId, {
+        name: edit.name,
+        description: edit.description,
+        duration_minutes: Number(edit.duration_minutes),
+        price: edit.price,
+        is_active: edit.is_active,
+      });
+      setServices((prev) => prev.map((service) => (service.id === serviceId ? updated : service)));
+      setEditingServiceId(null);
+      toast({ title: 'Service updated', description: `${updated.name} changes saved.` });
+    } catch (error) {
+      toast({ title: 'Update failed', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setSavingServiceId(null);
+    }
+  };
+
+  const submitAdminLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!authForm.username || !authForm.password) {
+      toast({ title: 'Missing credentials', description: 'Enter username and password.', variant: 'destructive' });
+      return;
+    }
+
+    setAuthSubmitting(true);
+    try {
+      const token = btoa(`${authForm.username}:${authForm.password}`);
+      localStorage.setItem('adminBasicAuthToken', token);
+      await loadAdminData();
+      setIsAdminAuthorized(true);
+      setAuthForm({ username: '', password: '' });
+      toast({ title: 'Admin login successful', description: 'You now have access to admin actions.' });
+    } catch (error) {
+      localStorage.removeItem('adminBasicAuthToken');
+      setIsAdminAuthorized(false);
+      toast({
+        title: 'Admin login failed',
+        description: (error as Error).message || 'Invalid admin credentials or missing admin role.',
+        variant: 'destructive',
+      });
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const logoutAdmin = () => {
+    localStorage.removeItem('adminBasicAuthToken');
+    setIsAdminAuthorized(false);
+    setServices([]);
+    setStaff([]);
+    toast({ title: 'Logged out', description: 'Admin credentials removed from this browser session.' });
+  };
+
+  if (authChecking) {
+    return (
+      <section id="admin" className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <Card className="spa-card max-w-md mx-auto">
+            <CardContent className="py-10 text-center text-gray-600">Checking admin session...</CardContent>
+          </Card>
+        </div>
+      </section>
+    );
+  }
+
+  if (!isAdminAuthorized) {
+    return (
+      <section id="admin" className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <Card className="spa-card max-w-lg mx-auto border-[#F5C5C5]">
+            <CardHeader>
+              <CardTitle className="text-2xl text-gray-800">Admin Login</CardTitle>
+              <CardDescription>Sign in with an account that has the `admin` role.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={submitAdminLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Username</Label>
+                  <Input
+                    value={authForm.username}
+                    onChange={(event) => setAuthForm((prev) => ({ ...prev, username: event.target.value }))}
+                    placeholder="admin username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    value={authForm.password}
+                    onChange={(event) => setAuthForm((prev) => ({ ...prev, password: event.target.value }))}
+                    placeholder="admin password"
+                  />
+                </div>
+                <Button type="submit" className="spa-button w-full" disabled={authSubmitting}>
+                  {authSubmitting ? 'Signing in...' : 'Sign In as Admin'}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section id="admin" className="py-20 bg-white">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-4">
-            Admin <span className="font-bold text-[#F1B2B5]">Dashboard</span>
-          </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Manage your spa bookings and appointments with ease. 
-            Keep track of all client requests and confirmations.
-          </p>
-        </div>
+        <div className="grid grid-cols-1 gap-6 md:pl-[250px]">
+          <aside className="hidden md:block md:fixed md:left-4 md:top-24 md:w-[220px] md:z-30">
+            <Card className="spa-card border-[#F5C5C5] shadow-lg">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base text-gray-700">Admin Menu</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'slots' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('slots');
+                    navigate('/admin/slots');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'slots' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Slot Setup
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'staff' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('staff');
+                    navigate('/admin/staff');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'staff' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Staff
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'services' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('services');
+                    navigate('/admin/services');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'services' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Services
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'bookings' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('bookings');
+                    navigate('/admin/bookings');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'bookings' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Bookings
+                </Button>
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={logoutAdmin}
+                    className="w-full justify-start border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
+                  >
+                    Logout Admin
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </aside>
 
+          <aside className="md:hidden">
+            <Card className="spa-card border-[#F5C5C5]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base text-gray-700">Admin Menu</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'slots' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('slots');
+                    navigate('/admin/slots');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'slots' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Slot Setup
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'staff' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('staff');
+                    navigate('/admin/staff');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'staff' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Staff
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'services' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('services');
+                    navigate('/admin/services');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'services' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Services
+                </Button>
+                <Button
+                  type="button"
+                  variant={activeAdminSection === 'bookings' ? 'default' : 'outline'}
+                  onClick={() => {
+                    setActiveAdminSection('bookings');
+                    navigate('/admin/bookings');
+                  }}
+                  className={`w-full justify-start ${activeAdminSection === 'bookings' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                >
+                  Bookings
+                </Button>
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={logoutAdmin}
+                    className="w-full justify-start border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
+                  >
+                    Logout Admin
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </aside>
+
+          <div>
+
+        {activeAdminSection === 'slots' ? (
+        <Card id="admin-slots" className="spa-card mb-8 border-[#F5C5C5]">
+          <CardHeader>
+            <CardTitle className="text-2xl text-gray-800">Set Availability Slots</CardTitle>
+            <CardDescription>
+              Slots created here appear in Book Now when service/date matches and slot is still available.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={createSlot} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Service</Label>
+                  <Select value={slotForm.serviceId} onValueChange={(value) => setSlotForm((prev) => ({ ...prev, serviceId: value }))}>
+                    <SelectTrigger><SelectValue placeholder="Select service" /></SelectTrigger>
+                    <SelectContent>
+                      {services.map((service) => (
+                        <SelectItem key={service.id} value={String(service.id)}>
+                          {service.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Staff</Label>
+                  {staff.length > 0 ? (
+                    <Select value={slotForm.staffId} onValueChange={(value) => setSlotForm((prev) => ({ ...prev, staffId: value }))}>
+                      <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                      <SelectContent>
+                        {staff.map((member) => (
+                          <SelectItem key={member.id} value={String(member.id)}>
+                            {member.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      type="number"
+                      value={slotForm.staffId}
+                      onChange={(event) => setSlotForm((prev) => ({ ...prev, staffId: event.target.value }))}
+                      placeholder="Enter staff ID"
+                    />
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Start Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={slotForm.startTime}
+                    onChange={(event) => setSlotForm((prev) => ({ ...prev, startTime: event.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>End Time</Label>
+                  <Input
+                    type="datetime-local"
+                    value={slotForm.endTime}
+                    onChange={(event) => setSlotForm((prev) => ({ ...prev, endTime: event.target.value }))}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-[#8a8a8a]">
+                End time is auto-filled based on selected service duration. You can still adjust it.
+              </p>
+
+              <Button type="submit" className="spa-button w-full md:w-auto" disabled={slotCreating}>
+                {slotCreating ? 'Creating slot...' : 'Create Slot'}
+              </Button>
+            </form>
+
+            {createdSlots.length > 0 ? (
+              <div className="mt-5 rounded-xl border border-[#F5C5C5] bg-[#FFF7F8]/50 p-3">
+                <p className="text-sm font-medium text-[#6a6a6a] mb-2">Recently created slots</p>
+                <div className="space-y-1.5">
+                  {createdSlots.map((slot) => (
+                    <p key={slot.id} className="text-xs text-[#6f6f6f]">
+                      #{slot.id} | Service {slot.service} | Staff {slot.staff} | {new Date(slot.start_time).toLocaleString()} - {new Date(slot.end_time).toLocaleString()}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+        ) : null}
+
+        {activeAdminSection === 'staff' ? (
+        <Card id="admin-staff" className="spa-card mb-8 border-[#D2D2D2]">
+          <CardHeader>
+            <CardTitle className="text-2xl text-gray-800">Add Staff</CardTitle>
+            <CardDescription>
+              Create staff members before assigning availability slots.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={addStaffMember} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Full Name</Label>
+                  <Input
+                    value={staffForm.fullName}
+                    onChange={(event) => setStaffForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                    placeholder="Staff full name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input
+                    type="email"
+                    value={staffForm.email}
+                    onChange={(event) => setStaffForm((prev) => ({ ...prev, email: event.target.value }))}
+                    placeholder="staff@email.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input
+                    value={staffForm.phone}
+                    onChange={(event) => setStaffForm((prev) => ({ ...prev, phone: event.target.value }))}
+                    placeholder="Optional phone"
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="spa-button w-full md:w-auto" disabled={staffCreating}>
+                {staffCreating ? 'Adding staff...' : 'Add Staff'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+        ) : null}
+
+        {activeAdminSection === 'services' ? (
+        <Card id="admin-services" className="spa-card mb-8 border-[#F5C5C5]">
+          <CardHeader>
+            <CardTitle className="text-2xl text-gray-800">Manage Services</CardTitle>
+            <CardDescription>
+              Create, edit, and activate/deactivate services used in booking.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <form onSubmit={createNewService} className="space-y-4 rounded-xl border border-[#F5C5C5] bg-[#FFF7F8]/40 p-4">
+              <p className="text-sm font-medium text-[#6a6a6a]">Add New Service</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Name</Label>
+                  <Input value={serviceForm.name} onChange={(e) => setServiceForm((prev) => ({ ...prev, name: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Duration (minutes)</Label>
+                  <Input type="number" min={1} value={serviceForm.durationMinutes} onChange={(e) => setServiceForm((prev) => ({ ...prev, durationMinutes: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Price</Label>
+                  <Input value={serviceForm.price} onChange={(e) => setServiceForm((prev) => ({ ...prev, price: e.target.value }))} placeholder="e.g. 450.00" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={serviceForm.isActive ? 'active' : 'inactive'}
+                    onValueChange={(value) => setServiceForm((prev) => ({ ...prev, isActive: value === 'active' }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea value={serviceForm.description} onChange={(e) => setServiceForm((prev) => ({ ...prev, description: e.target.value }))} />
+              </div>
+              <Button type="submit" className="spa-button w-full md:w-auto" disabled={serviceCreating}>
+                {serviceCreating ? 'Creating service...' : 'Create Service'}
+              </Button>
+            </form>
+
+            <div className="space-y-3">
+              {services.length === 0 ? (
+                <p className="text-sm text-[#7a7a7a]">No services available.</p>
+              ) : (
+                services.map((service) => {
+                  const edit = serviceEdits[service.id];
+                  if (!edit) return null;
+                  const isEditing = editingServiceId === service.id;
+                  return (
+                    <div key={service.id} className="rounded-xl border border-[#D2D2D2] bg-white p-4">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-gray-800">{service.name}</p>
+                        <div className="flex items-center gap-2">
+                          <Badge className={edit.is_active ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
+                            {edit.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                          {!isEditing ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setEditingServiceId(service.id)}
+                              className="border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
+                            >
+                              Edit
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Name</Label>
+                          <Input
+                            value={edit.name}
+                            disabled={!isEditing}
+                            onChange={(e) =>
+                              setServiceEdits((prev) => ({
+                                ...prev,
+                                [service.id]: { ...prev[service.id], name: e.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Duration (minutes)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            value={edit.duration_minutes}
+                            disabled={!isEditing}
+                            onChange={(e) =>
+                              setServiceEdits((prev) => ({
+                                ...prev,
+                                [service.id]: { ...prev[service.id], duration_minutes: e.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Price</Label>
+                          <Input
+                            value={edit.price}
+                            disabled={!isEditing}
+                            onChange={(e) =>
+                              setServiceEdits((prev) => ({
+                                ...prev,
+                                [service.id]: { ...prev[service.id], price: e.target.value },
+                              }))
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Status</Label>
+                          <Select
+                            value={edit.is_active ? 'active' : 'inactive'}
+                            disabled={!isEditing}
+                            onValueChange={(value) =>
+                              setServiceEdits((prev) => ({
+                                ...prev,
+                                [service.id]: { ...prev[service.id], is_active: value === 'active' },
+                              }))
+                            }
+                          >
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="mt-3 space-y-1.5">
+                        <Label className="text-xs">Description</Label>
+                        <Textarea
+                          value={edit.description}
+                          disabled={!isEditing}
+                          onChange={(e) =>
+                            setServiceEdits((prev) => ({
+                              ...prev,
+                              [service.id]: { ...prev[service.id], description: e.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      {isEditing ? (
+                        <div className="mt-3 flex items-center justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setEditingServiceId(null)}
+                            className="border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            className="spa-button"
+                            onClick={() => saveService(service.id)}
+                            disabled={savingServiceId === service.id}
+                          >
+                            {savingServiceId === service.id ? 'Saving...' : 'Save Changes'}
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        ) : null}
+
+        {activeAdminSection === 'bookings' ? (
+        <>
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div id="admin-bookings" className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="spa-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
@@ -232,6 +1023,10 @@ const AdminDashboard = () => {
               </Card>
             ))
           )}
+        </div>
+        </>
+        ) : null}
+          </div>
         </div>
       </div>
     </section>

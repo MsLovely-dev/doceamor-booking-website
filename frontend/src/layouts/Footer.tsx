@@ -8,7 +8,7 @@ const Footer = () => {
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] rounded-full"></div>
-              <h3 className="text-2xl font-bold">Serenity Spa</h3>
+              <h3 className="text-2xl font-bold">Doce-Amore Wellness Spa</h3>
             </div>
             <p className="text-[#6b5b62] leading-relaxed">
               Your sanctuary for wellness, beauty, and tranquility. Discover the perfect balance of luxury and serenity.
@@ -64,7 +64,7 @@ const Footer = () => {
             Made with <Heart className="w-4 h-4 text-[#F1B2B5]" /> for your wellness journey
           </p>
           <p className="text-[#7d6d74] text-sm mt-2">
-            Copyright 2024 Serenity Spa. All rights reserved.
+            Copyright 2024 Doce-Amore Wellness Spa. All rights reserved.
           </p>
         </div>
       </div>

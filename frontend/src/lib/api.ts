@@ -8,22 +8,71 @@ interface RequestOptions {
   headers?: Record<string, string>;
 }
 
+function extractApiErrorMessage(data: unknown): string | null {
+  if (!data) return null;
+
+  if (typeof data === "string") {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    const first = data.find((item) => typeof item === "string");
+    return typeof first === "string" ? first : null;
+  }
+
+  if (typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    if (typeof record.detail === "string") {
+      return record.detail;
+    }
+
+    for (const [field, value] of Object.entries(record)) {
+      if (typeof value === "string") {
+        return `${field}: ${value}`;
+      }
+      if (Array.isArray(value) && value.length > 0) {
+        const first = value.find((item) => typeof item === "string");
+        if (typeof first === "string") {
+          return field === "non_field_errors" ? first : `${field}: ${first}`;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const authToken =
+    typeof window !== "undefined" ? window.localStorage.getItem("adminBasicAuthToken") : null;
+  const headers: Record<string, string> = { ...(options.headers ?? {}) };
+  if (authToken && !headers.Authorization) {
+    headers.Authorization = `Basic ${authToken}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: options.method ?? "GET",
     body: options.body ?? null,
-    headers: options.headers,
+    headers,
   });
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
     try {
-      const data = (await response.json()) as Record<string, unknown>;
-      if (typeof data.detail === "string") {
-        message = data.detail;
+      const data = (await response.json()) as unknown;
+      const extracted = extractApiErrorMessage(data);
+      if (extracted) {
+        message = extracted;
       }
     } catch {
-      // keep default message
+      try {
+        const fallbackText = await response.text();
+        if (fallbackText.trim()) {
+          message = fallbackText.trim();
+        }
+      } catch {
+        // keep default message
+      }
     }
     throw new Error(message);
   }
@@ -34,4 +83,3 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   return (await response.json()) as T;
 }
-

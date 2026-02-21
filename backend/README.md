@@ -57,3 +57,7 @@ Backend is set up with Django + Django REST Framework + CORS support.
 
 - Default DB is SQLite.
 - PostgreSQL is enabled automatically when `POSTGRES_DB` env vars are set.
+- To import frontend catalog services into backend DB, run:
+  `python manage.py sync_catalog_services`
+  optional flags:
+  `--dry-run`, `--update-existing`
