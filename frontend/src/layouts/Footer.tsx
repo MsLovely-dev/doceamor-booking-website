@@ -1,4 +1,4 @@
-import { Heart, MapPin, Phone, Instagram, Facebook, Twitter } from "lucide-react";
+import { Heart, MapPin, Phone, Facebook } from "lucide-react";
 import { BOOKING_ENABLED } from "@/config/features";
 
 const Footer = () => {
@@ -15,9 +15,15 @@ const Footer = () => {
               Your sanctuary for wellness, beauty, and tranquility. Discover the perfect balance of luxury and serenity.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-[#6b5b62] hover:text-[#F1B2B5] transition-colors"><Instagram className="w-5 h-5" /></a>
-              <a href="#" className="text-[#6b5b62] hover:text-[#F1B2B5] transition-colors"><Facebook className="w-5 h-5" /></a>
-              <a href="#" className="text-[#6b5b62] hover:text-[#F1B2B5] transition-colors"><Twitter className="w-5 h-5" /></a>
+              <a
+                href="https://www.facebook.com/doceamorspa"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#6b5b62] hover:text-[#F1B2B5] transition-colors"
+                aria-label="Visit Doce-Amor Wellness Spa on Facebook"
+              >
+                <Facebook className="w-5 h-5" />
+              </a>
             </div>
           </div>
 
