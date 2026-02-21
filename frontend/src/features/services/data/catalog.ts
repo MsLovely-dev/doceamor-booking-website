@@ -291,12 +291,54 @@ export const SERVICE_CATALOG: ServiceCatalogSection[] = [
           { Service: "RF Whole Belly", Price: "PHP 1000" },
         ],
       },
+    ],
+  },
+  {
+    title: "Lashes",
+    groups: [
       {
-        title: "Lash",
+        title: "Lash Lift",
         columns: ["Service", "M", "NM"],
         rows: [
           { Service: "Lash Lift", M: "PHP 400", NM: "PHP 450" },
           { Service: "Lash Lift with Tint", M: "PHP 550", NM: "PHP 600" },
+        ],
+      },
+      {
+        title: "Eyelash Extension",
+        columns: ["Service", "M", "NM"],
+        rows: [
+          { Service: "Classic", M: "PHP 1200", NM: "PHP 1300" },
+          { Service: "Classic Natural", M: "PHP 1000", NM: "PHP 1100" },
+          { Service: "Hybrid", M: "PHP 1500", NM: "PHP 1600" },
+          { Service: "Volume", M: "PHP 1800", NM: "PHP 1900" },
+        ],
+      },
+      {
+        title: "Refills (within 2-3 weeks)",
+        columns: ["Service", "Price"],
+        rows: [
+          { Service: "Classic Refill", Price: "PHP 700" },
+          { Service: "Hybrid Refill", Price: "PHP 900" },
+          { Service: "Volume Refill", Price: "PHP 1100" },
+        ],
+      },
+      {
+        title: "Removal & Notes",
+        columns: ["Service", "Price"],
+        rows: [
+          { Service: "More than 50% loss = full set price", Price: "-" },
+          { Service: "Professional Lash Removal", Price: "PHP 300" },
+          { Service: "Removal + new set", Price: "PHP 200 discounted" },
+        ],
+      },
+      {
+        title: "Add-ons",
+        columns: ["Service", "Price"],
+        rows: [
+          { Service: "Super Bonder Upgrade", Price: "PHP 150" },
+          { Service: "Lash Shampoo", Price: "PHP 100" },
+          { Service: "Aftercare Lash Brush", Price: "PHP 50" },
         ],
       },
     ],

@@ -19,6 +19,7 @@ const iconMap: Record<string, ReactNode> = {
   "Facial Care": <Flower2 className="h-4 w-4" />,
   "Hair Removal": <SprayCan className="h-4 w-4" />,
   "Other Services": <HeartPulse className="h-4 w-4" />,
+  Lashes: <Sparkles className="h-4 w-4" />,
   Packages: <Package className="h-4 w-4" />,
   "Bridal / Birthday Party": <Sparkles className="h-4 w-4" />,
 };
