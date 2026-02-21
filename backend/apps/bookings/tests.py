@@ -181,3 +181,105 @@ class BookingFlowTests(APITestCase):
         self.assertIn("status", success.data)
         self.assertIn("public_id", success.data)
         self.assertNotIn("customer_email", success.data)
+
+
+class CatalogAndAvailabilityFilterTests(APITestCase):
+    def setUp(self):
+        Group.objects.get_or_create(name=ROLE_ADMIN)
+        Group.objects.get_or_create(name=ROLE_OPERATOR)
+        self.service = Service.objects.create(
+            name="Nails",
+            duration_minutes=60,
+            price="300.00",
+            is_active=True,
+        )
+        self.staff_active = Staff.objects.create(
+            full_name="Active Staff",
+            email="active.staff@example.com",
+            is_active=True,
+        )
+        self.staff_inactive = Staff.objects.create(
+            full_name="Inactive Staff",
+            email="inactive.staff@example.com",
+            is_active=False,
+        )
+
+    def _create_role_user(self, username: str, role: str):
+        User = get_user_model()
+        user = User.objects.create_user(
+            username=username,
+            email=f"{username}@example.com",
+            password="password123",
+            is_staff=True,
+        )
+        group = Group.objects.get(name=role)
+        user.groups.add(group)
+        return user
+
+    def test_public_staff_list_returns_active_only(self):
+        response = self.client.get("/api/bookings/staff/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = [item["email"] for item in response.data]
+        self.assertIn("active.staff@example.com", emails)
+        self.assertNotIn("inactive.staff@example.com", emails)
+
+    def test_admin_staff_list_can_include_inactive(self):
+        admin_user = self._create_role_user("adminuser", ROLE_ADMIN)
+        self.client.force_authenticate(admin_user)
+
+        response = self.client.get("/api/bookings/staff/?include_inactive=true")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        emails = [item["email"] for item in response.data]
+        self.assertIn("active.staff@example.com", emails)
+        self.assertIn("inactive.staff@example.com", emails)
+
+    def test_public_availability_default_unbooked_and_active_only(self):
+        booked = Availability.objects.create(
+            staff=self.staff_active,
+            service=self.service,
+            start_time=timezone.now() + timedelta(hours=2),
+            end_time=timezone.now() + timedelta(hours=3),
+            is_booked=True,
+        )
+        unbooked = Availability.objects.create(
+            staff=self.staff_active,
+            service=self.service,
+            start_time=timezone.now() + timedelta(hours=4),
+            end_time=timezone.now() + timedelta(hours=5),
+            is_booked=False,
+        )
+        Availability.objects.create(
+            staff=self.staff_inactive,
+            service=self.service,
+            start_time=timezone.now() + timedelta(hours=6),
+            end_time=timezone.now() + timedelta(hours=7),
+            is_booked=False,
+        )
+
+        response = self.client.get("/api/bookings/availability/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [item["id"] for item in response.data]
+        self.assertIn(unbooked.id, ids)
+        self.assertNotIn(booked.id, ids)
+
+    def test_public_availability_supports_is_booked_filter(self):
+        booked = Availability.objects.create(
+            staff=self.staff_active,
+            service=self.service,
+            start_time=timezone.now() + timedelta(hours=2),
+            end_time=timezone.now() + timedelta(hours=3),
+            is_booked=True,
+        )
+        unbooked = Availability.objects.create(
+            staff=self.staff_active,
+            service=self.service,
+            start_time=timezone.now() + timedelta(hours=4),
+            end_time=timezone.now() + timedelta(hours=5),
+            is_booked=False,
+        )
+
+        response = self.client.get("/api/bookings/availability/?is_booked=true")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [item["id"] for item in response.data]
+        self.assertIn(booked.id, ids)
+        self.assertNotIn(unbooked.id, ids)

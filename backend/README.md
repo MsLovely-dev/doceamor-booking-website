@@ -42,9 +42,10 @@ Backend is set up with Django + Django REST Framework + CORS support.
 - `POST /api/bookings/{public_id}/cancel/` (guest/admin)
 - `POST /api/bookings/{public_id}/verify-payment/` (admin/operator)
 - `POST /api/bookings/{public_id}/complete/` (admin/operator)
-- `GET|POST /api/bookings/staff/` (admin only)
+- `GET /api/bookings/staff/` (public list, active-only by default)
+- `POST /api/bookings/staff/` (admin only)
 - `GET|PUT|PATCH|DELETE /api/bookings/staff/{id}/`
-- `GET|POST /api/bookings/availability/` (public read for bookable slots)
+- `GET|POST /api/bookings/availability/` (public read for bookable slots, supports `service`, `staff`, `date`, `is_booked`)
 - `GET|PUT|PATCH|DELETE /api/bookings/availability/{id}/`
 
 ## Role model

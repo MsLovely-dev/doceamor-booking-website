@@ -2,7 +2,7 @@ import AdminDashboard from '@/features/admin/components/AdminDashboard';
 
 const AdminBookingsPage = () => {
   return (
-    <div className="min-h-screen pt-16">
+    <div className="min-h-screen">
       <AdminDashboard initialSection="bookings" />
     </div>
   );

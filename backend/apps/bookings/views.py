@@ -20,13 +20,25 @@ from .serializers import (
     VerifyPaymentSerializer,
 )
 from .services import cancel_booking, complete_booking, create_guest_booking, submit_payment_proof, verify_payment
-from apps.users.roles import is_admin_or_operator
+from apps.users.roles import is_admin, is_admin_or_operator
 
 
 class StaffViewSet(viewsets.ModelViewSet):
     serializer_class = StaffSerializer
-    permission_classes = [IsAdminRole]
-    queryset = Staff.objects.all()
+
+    def get_permissions(self):
+        if self.action in {"list", "retrieve"}:
+            return [AllowAny()]
+        return [IsAdminRole()]
+
+    def get_queryset(self):
+        queryset = Staff.objects.all()
+        include_inactive = self.request.query_params.get("include_inactive")
+        if include_inactive in {"1", "true", "True"} and is_admin(self.request.user):
+            return queryset
+        if self.request.user and self.request.user.is_staff:
+            return queryset
+        return queryset.filter(is_active=True)
 
 
 class AvailabilityViewSet(viewsets.ModelViewSet):
@@ -39,19 +51,33 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Availability.objects.select_related("staff", "service")
-        if is_admin_or_operator(self.request.user):
-            return queryset
-
         date_filter = self.request.query_params.get("date")
         service_filter = self.request.query_params.get("service")
         staff_filter = self.request.query_params.get("staff")
+        is_booked_filter = self.request.query_params.get("is_booked")
+
+        if is_admin_or_operator(self.request.user):
+            if date_filter:
+                queryset = queryset.filter(start_time__date=date_filter)
+            if service_filter:
+                queryset = queryset.filter(service_id=service_filter)
+            if staff_filter:
+                queryset = queryset.filter(staff_id=staff_filter)
+            if is_booked_filter in {"1", "true", "True"}:
+                queryset = queryset.filter(is_booked=True)
+            elif is_booked_filter in {"0", "false", "False"}:
+                queryset = queryset.filter(is_booked=False)
+            return queryset
 
         queryset = queryset.filter(
-            is_booked=False,
             start_time__gt=timezone.now(),
             service__is_active=True,
             staff__is_active=True,
         )
+        if is_booked_filter in {"1", "true", "True"}:
+            queryset = queryset.filter(is_booked=True)
+        else:
+            queryset = queryset.filter(is_booked=False)
         if date_filter:
             queryset = queryset.filter(start_time__date=date_filter)
         if service_filter:

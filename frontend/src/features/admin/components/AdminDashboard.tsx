@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Calendar, Clock, User, Mail, Phone, CheckCircle, XCircle, AlertCircle, Scissors, Users, LayoutGrid, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +18,7 @@ import {
   createAvailability,
   createService,
   createStaff,
+  fetchAvailabilityAdmin,
   fetchServicesAdmin,
   fetchStaff,
   updateService,
@@ -52,7 +54,11 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [slotCreating, setSlotCreating] = useState(false);
-  const [createdSlots, setCreatedSlots] = useState<Availability[]>([]);
+  const [slotsLoadingList, setSlotsLoadingList] = useState(false);
+  const [availabilityRows, setAvailabilityRows] = useState<Availability[]>([]);
+  const [showCreateSlotForm, setShowCreateSlotForm] = useState(false);
+  const [showCreateStaffForm, setShowCreateStaffForm] = useState(false);
+  const [showCreateServiceForm, setShowCreateServiceForm] = useState(false);
   const [staffCreating, setStaffCreating] = useState(false);
   const [slotForm, setSlotForm] = useState({
     serviceId: '',
@@ -110,9 +116,24 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   }, [initialSection]);
 
   const loadAdminData = async () => {
-    const [serviceData, staffData] = await Promise.all([fetchServicesAdmin(), fetchStaff()]);
+    const [serviceData, staffData, availabilityData] = await Promise.all([
+      fetchServicesAdmin(),
+      fetchStaff(),
+      fetchAvailabilityAdmin(),
+    ]);
     setServices(serviceData);
-    setStaff(staffData.filter((member) => member.is_active));
+    setStaff(staffData);
+    setAvailabilityRows(availabilityData);
+  };
+
+  const refreshAvailabilityRows = async () => {
+    setSlotsLoadingList(true);
+    try {
+      const rows = await fetchAvailabilityAdmin();
+      setAvailabilityRows(rows);
+    } finally {
+      setSlotsLoadingList(false);
+    }
   };
 
   useEffect(() => {
@@ -232,14 +253,15 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
 
     setSlotCreating(true);
     try {
-      const created = await createAvailability({
+      await createAvailability({
         staff: Number(slotForm.staffId),
         service: Number(slotForm.serviceId),
         start_time: slotForm.startTime,
         end_time: slotForm.endTime,
       });
-      setCreatedSlots((prev) => [created, ...prev].slice(0, 10));
       setSlotForm((prev) => ({ ...prev, startTime: '', endTime: '' }));
+      setShowCreateSlotForm(false);
+      await refreshAvailabilityRows();
       toast({ title: 'Slot created', description: 'Availability slot saved successfully.' });
     } catch (error) {
       toast({ title: 'Create slot failed', description: (error as Error).message, variant: 'destructive' });
@@ -266,6 +288,7 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
       });
       setStaff((prev) => [...prev, created].sort((a, b) => a.full_name.localeCompare(b.full_name)));
       setStaffForm({ fullName: '', email: '', phone: '' });
+      setShowCreateStaffForm(false);
       toast({ title: 'Staff added', description: `${created.full_name} is now available for slot assignment.` });
     } catch (error) {
       toast({ title: 'Add staff failed', description: (error as Error).message, variant: 'destructive' });
@@ -299,6 +322,7 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
         price: '',
         isActive: true,
       });
+      setShowCreateServiceForm(false);
       toast({ title: 'Service created', description: `${created.name} was added.` });
     } catch (error) {
       toast({ title: 'Create service failed', description: (error as Error).message, variant: 'destructive' });
@@ -371,6 +395,33 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
     toast({ title: 'Logged out', description: 'Admin credentials removed from this browser session.' });
   };
 
+  const adminMenuItems: Array<{
+    key: 'slots' | 'staff' | 'services' | 'bookings';
+    label: string;
+    path: string;
+    icon: typeof LayoutGrid;
+  }> = [
+    { key: 'slots', label: 'Slot Setup', path: '/admin/slots', icon: LayoutGrid },
+    { key: 'staff', label: 'Staff', path: '/admin/staff', icon: Users },
+    { key: 'services', label: 'Services', path: '/admin/services', icon: Scissors },
+    { key: 'bookings', label: 'Bookings', path: '/admin/bookings', icon: Calendar },
+  ];
+
+  const sectionHeading = {
+    slots: { title: 'Slot Setup', subtitle: 'Create and manage available schedules for booking.' },
+    staff: { title: 'Staff', subtitle: 'Manage team members available for appointment slots.' },
+    services: { title: 'Services', subtitle: 'Create, edit, and activate services used in booking.' },
+    bookings: { title: 'Bookings', subtitle: 'Track and manage all booking requests and statuses.' },
+  }[activeAdminSection];
+
+  const navigateSection = (section: 'slots' | 'staff' | 'services' | 'bookings') => {
+    setActiveAdminSection(section);
+    const target = adminMenuItems.find((item) => item.key === section);
+    if (target) {
+      navigate(target.path);
+    }
+  };
+
   if (authChecking) {
     return (
       <section id="admin" className="py-20 bg-white">
@@ -423,403 +474,391 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   }
 
   return (
-    <section id="admin" className="py-20 bg-white">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 gap-6 md:pl-[250px]">
-          <aside className="hidden md:block md:fixed md:left-4 md:top-24 md:w-[220px] md:z-30">
-            <Card className="spa-card border-[#F5C5C5] shadow-lg">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base text-gray-700">Admin Menu</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
+    <section id="admin" className="min-h-screen bg-white">
+      <div className="flex min-h-screen">
+        <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col lg:border-r lg:border-[#F5C5C5] lg:bg-white">
+          <div className="h-[86px] border-b border-[#F5C5C5] px-5 flex flex-col justify-center">
+            <p className="text-2xl font-semibold leading-none text-[#8c5f6f]">Doce-Amore</p>
+            <p className="text-sm text-[#a67f8e] mt-2">Admin Panel</p>
+          </div>
+          <nav className="flex-1 px-3 py-4 space-y-2">
+            {adminMenuItems.map((item) => {
+              const Icon = item.icon;
+              const active = activeAdminSection === item.key;
+              return (
                 <Button
+                  key={item.key}
                   type="button"
-                  variant={activeAdminSection === 'slots' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('slots');
-                    navigate('/admin/slots');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'slots' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
+                  variant="ghost"
+                  onClick={() => navigateSection(item.key)}
+                  className={`w-full justify-start gap-2 rounded-lg ${
+                    active ? 'bg-[#F1B2B5] text-white hover:bg-[#e8a0a5]' : 'text-[#7a5967] hover:bg-[#fde7ea]'
+                  }`}
                 >
-                  Slot Setup
+                  <Icon className="h-4 w-4" />
+                  {item.label}
                 </Button>
-                <Button
-                  type="button"
-                  variant={activeAdminSection === 'staff' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('staff');
-                    navigate('/admin/staff');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'staff' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
-                >
-                  Staff
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeAdminSection === 'services' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('services');
-                    navigate('/admin/services');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'services' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
-                >
-                  Services
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeAdminSection === 'bookings' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('bookings');
-                    navigate('/admin/bookings');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'bookings' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
-                >
-                  Bookings
-                </Button>
-                <div className="pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={logoutAdmin}
-                    className="w-full justify-start border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
-                  >
-                    Logout Admin
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </aside>
+              );
+            })}
+          </nav>
+          <div className="p-3 border-t border-[#F5C5C5]">
+            <Button type="button" variant="ghost" onClick={logoutAdmin} className="w-full justify-start gap-2 text-[#7a5967] hover:bg-[#fde7ea]">
+              <LogOut className="h-4 w-4" />
+              Logout Admin
+            </Button>
+          </div>
+        </aside>
 
-          <aside className="md:hidden">
-            <Card className="spa-card border-[#F5C5C5]">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base text-gray-700">Admin Menu</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <Button
-                  type="button"
-                  variant={activeAdminSection === 'slots' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('slots');
-                    navigate('/admin/slots');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'slots' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
-                >
-                  Slot Setup
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeAdminSection === 'staff' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('staff');
-                    navigate('/admin/staff');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'staff' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
-                >
-                  Staff
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeAdminSection === 'services' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('services');
-                    navigate('/admin/services');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'services' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
-                >
-                  Services
-                </Button>
-                <Button
-                  type="button"
-                  variant={activeAdminSection === 'bookings' ? 'default' : 'outline'}
-                  onClick={() => {
-                    setActiveAdminSection('bookings');
-                    navigate('/admin/bookings');
-                  }}
-                  className={`w-full justify-start ${activeAdminSection === 'bookings' ? 'spa-button' : 'border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]'}`}
-                >
-                  Bookings
-                </Button>
-                <div className="pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={logoutAdmin}
-                    className="w-full justify-start border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
-                  >
-                    Logout Admin
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </aside>
+        <div className="flex-1 lg:ml-64">
+          <div className="sticky top-0 z-20 h-[86px] border-b border-[#F5C5C5] bg-white/90 backdrop-blur">
+            <div className="h-full px-4 md:px-6 flex items-center justify-between">
+              <div>
+                <p className="text-lg font-semibold text-[#7a5967]">{sectionHeading.title}</p>
+                <p className="text-sm text-[#9a7b88]">{sectionHeading.subtitle}</p>
+              </div>
+              <div />
+            </div>
+          </div>
 
-          <div>
+          <div className="mx-auto max-w-[1400px] px-4 py-4 md:px-6">
+            <div className="lg:hidden mb-4 space-y-3 rounded-xl border border-[#F5C5C5] bg-white p-3">
+              <div className="flex flex-wrap gap-2">
+                {adminMenuItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = activeAdminSection === item.key;
+                  return (
+                    <Button
+                      key={item.key}
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => navigateSection(item.key)}
+                      className={`gap-1.5 ${active ? 'bg-[#F1B2B5] text-white hover:bg-[#e8a0a5]' : 'text-[#7a5967] hover:bg-[#fde7ea]'}`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {item.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button type="button" variant="outline" onClick={logoutAdmin} className="w-full border-[#F5C5C5] text-[#7a5967] hover:bg-[#FFF7F8]">
+                Logout Admin
+              </Button>
+            </div>
+
+            <div>
 
         {activeAdminSection === 'slots' ? (
         <Card id="admin-slots" className="spa-card mb-8 border-[#F5C5C5]">
-          <CardHeader>
-            <CardTitle className="text-2xl text-gray-800">Set Availability Slots</CardTitle>
-            <CardDescription>
-              Slots created here appear in Book Now when service/date matches and slot is still available.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-2xl text-gray-800">Availability Slots</CardTitle>
+              <CardDescription>
+                Slots created here appear in Book Now when service/date matches and slot is still available.
+              </CardDescription>
+            </div>
+            <Button
+              type="button"
+              className="spa-button"
+              onClick={() => setShowCreateSlotForm(true)}
+            >
+              Create Slot
+            </Button>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={createSlot} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Service</Label>
-                  <Select value={slotForm.serviceId} onValueChange={(value) => setSlotForm((prev) => ({ ...prev, serviceId: value }))}>
-                    <SelectTrigger><SelectValue placeholder="Select service" /></SelectTrigger>
-                    <SelectContent>
-                      {services.map((service) => (
-                        <SelectItem key={service.id} value={String(service.id)}>
-                          {service.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+          <CardContent className="space-y-6">
+            <div className="overflow-x-auto rounded-lg border border-[#F5C5C5]">
+              <table className="w-full min-w-[760px] text-sm">
+                <thead className="bg-[#FFF7F8] text-[#7a5967]">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Service</th>
+                    <th className="px-4 py-3 text-left font-medium">Staff</th>
+                    <th className="px-4 py-3 text-left font-medium">Start</th>
+                    <th className="px-4 py-3 text-left font-medium">End</th>
+                    <th className="px-4 py-3 text-left font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {availabilityRows
+                    .slice()
+                    .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+                    .map((slot) => (
+                      <tr key={slot.id} className="border-t border-[#F3DDE0]">
+                        <td className="px-4 py-3 text-[#5f4e55]">
+                          {services.find((service) => service.id === slot.service)?.name ?? `Service #${slot.service}`}
+                        </td>
+                        <td className="px-4 py-3 text-[#5f4e55]">
+                          {staff.find((member) => member.id === slot.staff)?.full_name ?? `Staff #${slot.staff}`}
+                        </td>
+                        <td className="px-4 py-3 text-[#5f4e55]">{new Date(slot.start_time).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-[#5f4e55]">{new Date(slot.end_time).toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <Badge className={slot.is_booked ? 'bg-gray-100 text-gray-700 border-gray-200' : 'bg-green-100 text-green-700 border-green-200'}>
+                            {slot.is_booked ? 'Booked' : 'Open'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              {slotsLoadingList ? <p className="px-4 py-3 text-sm text-[#8a8a8a]">Loading slots...</p> : null}
+              {!slotsLoadingList && availabilityRows.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-[#8a8a8a]">No slots available yet.</p>
+              ) : null}
+            </div>
 
-                <div className="space-y-2">
-                  <Label>Staff</Label>
-                  {staff.length > 0 ? (
-                    <Select value={slotForm.staffId} onValueChange={(value) => setSlotForm((prev) => ({ ...prev, staffId: value }))}>
-                      <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
-                      <SelectContent>
-                        {staff.map((member) => (
-                          <SelectItem key={member.id} value={String(member.id)}>
-                            {member.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      type="number"
-                      value={slotForm.staffId}
-                      onChange={(event) => setSlotForm((prev) => ({ ...prev, staffId: event.target.value }))}
-                      placeholder="Enter staff ID"
-                    />
-                  )}
-                </div>
-              </div>
+            <Dialog open={showCreateSlotForm} onOpenChange={setShowCreateSlotForm}>
+              <DialogContent className="max-w-3xl border-[#F5C5C5]">
+                <DialogHeader>
+                  <DialogTitle className="text-[#7a5967]">Create Slot</DialogTitle>
+                  <DialogDescription>
+                    Add a new availability slot for selected service and staff.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={createSlot} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Service</Label>
+                      <Select value={slotForm.serviceId} onValueChange={(value) => setSlotForm((prev) => ({ ...prev, serviceId: value }))}>
+                        <SelectTrigger><SelectValue placeholder="Select service" /></SelectTrigger>
+                        <SelectContent>
+                          {services.map((service) => (
+                            <SelectItem key={service.id} value={String(service.id)}>
+                              {service.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Start Time</Label>
-                  <Input
-                    type="datetime-local"
-                    value={slotForm.startTime}
-                    onChange={(event) => setSlotForm((prev) => ({ ...prev, startTime: event.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>End Time</Label>
-                  <Input
-                    type="datetime-local"
-                    value={slotForm.endTime}
-                    onChange={(event) => setSlotForm((prev) => ({ ...prev, endTime: event.target.value }))}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-[#8a8a8a]">
-                End time is auto-filled based on selected service duration. You can still adjust it.
-              </p>
+                    <div className="space-y-2">
+                      <Label>Staff</Label>
+                      {staff.some((member) => member.is_active) ? (
+                        <Select value={slotForm.staffId} onValueChange={(value) => setSlotForm((prev) => ({ ...prev, staffId: value }))}>
+                          <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                          <SelectContent>
+                            {staff.filter((member) => member.is_active).map((member) => (
+                              <SelectItem key={member.id} value={String(member.id)}>
+                                {member.full_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type="number"
+                          value={slotForm.staffId}
+                          onChange={(event) => setSlotForm((prev) => ({ ...prev, staffId: event.target.value }))}
+                          placeholder="Enter staff ID"
+                        />
+                      )}
+                    </div>
+                  </div>
 
-              <Button type="submit" className="spa-button w-full md:w-auto" disabled={slotCreating}>
-                {slotCreating ? 'Creating slot...' : 'Create Slot'}
-              </Button>
-            </form>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Start Time</Label>
+                      <Input
+                        type="datetime-local"
+                        value={slotForm.startTime}
+                        onChange={(event) => setSlotForm((prev) => ({ ...prev, startTime: event.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>End Time</Label>
+                      <Input
+                        type="datetime-local"
+                        value={slotForm.endTime}
+                        onChange={(event) => setSlotForm((prev) => ({ ...prev, endTime: event.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-[#8a8a8a]">
+                    End time is auto-filled based on selected service duration. You can still adjust it.
+                  </p>
 
-            {createdSlots.length > 0 ? (
-              <div className="mt-5 rounded-xl border border-[#F5C5C5] bg-[#FFF7F8]/50 p-3">
-                <p className="text-sm font-medium text-[#6a6a6a] mb-2">Recently created slots</p>
-                <div className="space-y-1.5">
-                  {createdSlots.map((slot) => (
-                    <p key={slot.id} className="text-xs text-[#6f6f6f]">
-                      #{slot.id} | Service {slot.service} | Staff {slot.staff} | {new Date(slot.start_time).toLocaleString()} - {new Date(slot.end_time).toLocaleString()}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            ) : null}
+                  <Button type="submit" className="spa-button w-full md:w-auto" disabled={slotCreating}>
+                    {slotCreating ? 'Creating slot...' : 'Create Slot'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
         ) : null}
 
         {activeAdminSection === 'staff' ? (
         <Card id="admin-staff" className="spa-card mb-8 border-[#D2D2D2]">
-          <CardHeader>
-            <CardTitle className="text-2xl text-gray-800">Add Staff</CardTitle>
-            <CardDescription>
-              Create staff members before assigning availability slots.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-2xl text-gray-800">Staff</CardTitle>
+              <CardDescription>
+                Manage staff members used for booking and slot assignment.
+              </CardDescription>
+            </div>
+            <Button type="button" className="spa-button" onClick={() => setShowCreateStaffForm(true)}>
+              Add Staff
+            </Button>
           </CardHeader>
           <CardContent>
-            <form onSubmit={addStaffMember} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input
-                    value={staffForm.fullName}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                    placeholder="Staff full name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={staffForm.email}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="staff@email.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Phone</Label>
-                  <Input
-                    value={staffForm.phone}
-                    onChange={(event) => setStaffForm((prev) => ({ ...prev, phone: event.target.value }))}
-                    placeholder="Optional phone"
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="spa-button w-full md:w-auto" disabled={staffCreating}>
-                {staffCreating ? 'Adding staff...' : 'Add Staff'}
-              </Button>
-            </form>
+            <div className="overflow-x-auto rounded-lg border border-[#F5C5C5]">
+              <table className="w-full min-w-[680px] text-sm">
+                <thead className="bg-[#FFF7F8] text-[#7a5967]">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Name</th>
+                    <th className="px-4 py-3 text-left font-medium">Email</th>
+                    <th className="px-4 py-3 text-left font-medium">Phone</th>
+                    <th className="px-4 py-3 text-left font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staff
+                    .slice()
+                    .sort((a, b) => a.full_name.localeCompare(b.full_name))
+                    .map((member) => (
+                      <tr key={member.id} className="border-t border-[#F3DDE0]">
+                        <td className="px-4 py-3 text-[#5f4e55]">{member.full_name}</td>
+                        <td className="px-4 py-3 text-[#5f4e55]">{member.email}</td>
+                        <td className="px-4 py-3 text-[#5f4e55]">{member.phone || '-'}</td>
+                        <td className="px-4 py-3">
+                          <Badge className={member.is_active ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
+                            {member.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              {staff.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-[#8a8a8a]">No staff available yet.</p>
+              ) : null}
+            </div>
+
+            <Dialog open={showCreateStaffForm} onOpenChange={setShowCreateStaffForm}>
+              <DialogContent className="max-w-2xl border-[#F5C5C5]">
+                <DialogHeader>
+                  <DialogTitle className="text-[#7a5967]">Add Staff</DialogTitle>
+                  <DialogDescription>
+                    Create staff members before assigning availability slots.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={addStaffMember} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Full Name</Label>
+                      <Input
+                        value={staffForm.fullName}
+                        onChange={(event) => setStaffForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                        placeholder="Staff full name"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input
+                        type="email"
+                        value={staffForm.email}
+                        onChange={(event) => setStaffForm((prev) => ({ ...prev, email: event.target.value }))}
+                        placeholder="staff@email.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Phone</Label>
+                      <Input
+                        value={staffForm.phone}
+                        onChange={(event) => setStaffForm((prev) => ({ ...prev, phone: event.target.value }))}
+                        placeholder="Optional phone"
+                      />
+                    </div>
+                  </div>
+                  <Button type="submit" className="spa-button w-full md:w-auto" disabled={staffCreating}>
+                    {staffCreating ? 'Adding staff...' : 'Add Staff'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
         ) : null}
 
         {activeAdminSection === 'services' ? (
         <Card id="admin-services" className="spa-card mb-8 border-[#F5C5C5]">
-          <CardHeader>
-            <CardTitle className="text-2xl text-gray-800">Manage Services</CardTitle>
-            <CardDescription>
-              Create, edit, and activate/deactivate services used in booking.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-2xl text-gray-800">Manage Services</CardTitle>
+              <CardDescription>
+                Create, edit, and activate/deactivate services used in booking.
+              </CardDescription>
+            </div>
+            <Button type="button" className="spa-button" onClick={() => setShowCreateServiceForm(true)}>
+              Create Service
+            </Button>
           </CardHeader>
           <CardContent className="space-y-6">
-            <form onSubmit={createNewService} className="space-y-4 rounded-xl border border-[#F5C5C5] bg-[#FFF7F8]/40 p-4">
-              <p className="text-sm font-medium text-[#6a6a6a]">Add New Service</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Name</Label>
-                  <Input value={serviceForm.name} onChange={(e) => setServiceForm((prev) => ({ ...prev, name: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Duration (minutes)</Label>
-                  <Input type="number" min={1} value={serviceForm.durationMinutes} onChange={(e) => setServiceForm((prev) => ({ ...prev, durationMinutes: e.target.value }))} />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Price</Label>
-                  <Input value={serviceForm.price} onChange={(e) => setServiceForm((prev) => ({ ...prev, price: e.target.value }))} placeholder="e.g. 450.00" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={serviceForm.isActive ? 'active' : 'inactive'}
-                    onValueChange={(value) => setServiceForm((prev) => ({ ...prev, isActive: value === 'active' }))}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea value={serviceForm.description} onChange={(e) => setServiceForm((prev) => ({ ...prev, description: e.target.value }))} />
-              </div>
-              <Button type="submit" className="spa-button w-full md:w-auto" disabled={serviceCreating}>
-                {serviceCreating ? 'Creating service...' : 'Create Service'}
-              </Button>
-            </form>
-
-            <div className="space-y-3">
+            <div className="overflow-x-auto rounded-lg border border-[#F5C5C5]">
+              <table className="w-full min-w-[1000px] text-sm">
+                <thead className="bg-[#FFF7F8] text-[#7a5967]">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">Name</th>
+                    <th className="px-4 py-3 text-left font-medium">Duration</th>
+                    <th className="px-4 py-3 text-left font-medium">Price</th>
+                    <th className="px-4 py-3 text-left font-medium">Status</th>
+                    <th className="px-4 py-3 text-left font-medium">Description</th>
+                    <th className="px-4 py-3 text-left font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
               {services.length === 0 ? (
-                <p className="text-sm text-[#7a7a7a]">No services available.</p>
+                <tr className="border-t border-[#F3DDE0]">
+                  <td className="px-4 py-3 text-sm text-[#8a8a8a]" colSpan={6}>No services available.</td>
+                </tr>
               ) : (
                 services.map((service) => {
                   const edit = serviceEdits[service.id];
                   if (!edit) return null;
                   const isEditing = editingServiceId === service.id;
                   return (
-                    <div key={service.id} className="rounded-xl border border-[#D2D2D2] bg-white p-4">
-                      <div className="mb-3 flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-gray-800">{service.name}</p>
-                        <div className="flex items-center gap-2">
-                          <Badge className={edit.is_active ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
-                            {edit.is_active ? 'Active' : 'Inactive'}
-                          </Badge>
-                          {!isEditing ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setEditingServiceId(service.id)}
-                              className="border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
-                            >
-                              Edit
-                            </Button>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Name</Label>
-                          <Input
-                            value={edit.name}
-                            disabled={!isEditing}
-                            onChange={(e) =>
-                              setServiceEdits((prev) => ({
-                                ...prev,
-                                [service.id]: { ...prev[service.id], name: e.target.value },
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Duration (minutes)</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={edit.duration_minutes}
-                            disabled={!isEditing}
-                            onChange={(e) =>
-                              setServiceEdits((prev) => ({
-                                ...prev,
-                                [service.id]: { ...prev[service.id], duration_minutes: e.target.value },
-                              }))
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Price</Label>
-                          <Input
-                            value={edit.price}
-                            disabled={!isEditing}
-                            onChange={(e) =>
-                              setServiceEdits((prev) => ({
-                                ...prev,
-                                [service.id]: { ...prev[service.id], price: e.target.value },
-                              }))
-                            }
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">Status</Label>
+                    <tr key={service.id} className="border-t border-[#F3DDE0] align-top">
+                      <td className="px-4 py-3">
+                        <Input
+                          value={edit.name}
+                          disabled={!isEditing}
+                          onChange={(e) =>
+                            setServiceEdits((prev) => ({
+                              ...prev,
+                              [service.id]: { ...prev[service.id], name: e.target.value },
+                            }))
+                          }
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={edit.duration_minutes}
+                          disabled={!isEditing}
+                          onChange={(e) =>
+                            setServiceEdits((prev) => ({
+                              ...prev,
+                              [service.id]: { ...prev[service.id], duration_minutes: e.target.value },
+                            }))
+                          }
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Input
+                          value={edit.price}
+                          disabled={!isEditing}
+                          onChange={(e) =>
+                            setServiceEdits((prev) => ({
+                              ...prev,
+                              [service.id]: { ...prev[service.id], price: e.target.value },
+                            }))
+                          }
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        {isEditing ? (
                           <Select
                             value={edit.is_active ? 'active' : 'inactive'}
-                            disabled={!isEditing}
                             onValueChange={(value) =>
                               setServiceEdits((prev) => ({
                                 ...prev,
@@ -833,10 +872,13 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
                               <SelectItem value="inactive">Inactive</SelectItem>
                             </SelectContent>
                           </Select>
-                        </div>
-                      </div>
-                      <div className="mt-3 space-y-1.5">
-                        <Label className="text-xs">Description</Label>
+                        ) : (
+                          <Badge className={edit.is_active ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-700 border-gray-200'}>
+                            {edit.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <Textarea
                           value={edit.description}
                           disabled={!isEditing}
@@ -847,9 +889,10 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
                             }))
                           }
                         />
-                      </div>
-                      {isEditing ? (
-                        <div className="mt-3 flex items-center justify-end gap-2">
+                      </td>
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                        <div className="flex items-center gap-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -867,12 +910,73 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
                             {savingServiceId === service.id ? 'Saving...' : 'Save Changes'}
                           </Button>
                         </div>
-                      ) : null}
-                    </div>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setEditingServiceId(service.id)}
+                            className="border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
+                          >
+                            Edit
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
                   );
                 })
               )}
+                </tbody>
+              </table>
             </div>
+
+            <Dialog open={showCreateServiceForm} onOpenChange={setShowCreateServiceForm}>
+              <DialogContent className="max-w-3xl border-[#F5C5C5]">
+                <DialogHeader>
+                  <DialogTitle className="text-[#7a5967]">Create Service</DialogTitle>
+                  <DialogDescription>
+                    Add a new service that can be used in booking.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={createNewService} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input value={serviceForm.name} onChange={(e) => setServiceForm((prev) => ({ ...prev, name: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Duration (minutes)</Label>
+                      <Input type="number" min={1} value={serviceForm.durationMinutes} onChange={(e) => setServiceForm((prev) => ({ ...prev, durationMinutes: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Price</Label>
+                      <Input value={serviceForm.price} onChange={(e) => setServiceForm((prev) => ({ ...prev, price: e.target.value }))} placeholder="e.g. 450.00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select
+                        value={serviceForm.isActive ? 'active' : 'inactive'}
+                        onValueChange={(value) => setServiceForm((prev) => ({ ...prev, isActive: value === 'active' }))}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea value={serviceForm.description} onChange={(e) => setServiceForm((prev) => ({ ...prev, description: e.target.value }))} />
+                  </div>
+                  <Button type="submit" className="spa-button w-full md:w-auto" disabled={serviceCreating}>
+                    {serviceCreating ? 'Creating service...' : 'Create Service'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </CardContent>
         </Card>
         ) : null}
@@ -1026,6 +1130,7 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
         </div>
         </>
         ) : null}
+            </div>
           </div>
         </div>
       </div>

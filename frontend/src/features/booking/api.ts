@@ -73,7 +73,7 @@ export interface TrackStatusResponse {
 }
 
 export async function fetchServices(): Promise<Service[]> {
-  return apiRequest<Service[]>("/api/services/");
+  return apiRequest<Service[]>("/api/services/", { withAuth: false });
 }
 
 export async function fetchServicesAdmin(): Promise<Service[]> {
@@ -113,7 +113,11 @@ export async function updateService(
 
 export async function fetchAvailabilityByServiceAndDate(serviceId: number, date: string): Promise<Availability[]> {
   const query = new URLSearchParams({ service: String(serviceId), date }).toString();
-  return apiRequest<Availability[]>(`/api/bookings/availability/?${query}`);
+  return apiRequest<Availability[]>(`/api/bookings/availability/?${query}`, { withAuth: false });
+}
+
+export async function fetchAvailabilityAdmin(): Promise<Availability[]> {
+  return apiRequest<Availability[]>("/api/bookings/availability/");
 }
 
 export async function fetchStaff(): Promise<Staff[]> {
@@ -151,6 +155,7 @@ export async function createBooking(payload: CreateBookingPayload): Promise<Crea
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    withAuth: false,
   });
 }
 
@@ -168,6 +173,7 @@ export async function submitPaymentProof(publicId: string, payload: SubmitPaymen
   return apiRequest<{ status: string; message: string }>(`/api/bookings/${publicId}/submit-payment-proof/`, {
     method: "POST",
     body: formData,
+    withAuth: false,
   });
 }
 
@@ -176,5 +182,6 @@ export async function trackBookingStatus(publicId: string, payload: TrackStatusP
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    withAuth: false,
   });
 }

@@ -46,12 +46,6 @@ const Header = () => {
             >
               Contact
             </Link>
-            <Link 
-              to="/admin" 
-              className={`transition-colors ${isActive('/admin') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
-            >
-              Admin
-            </Link>
           </nav>
 
           {/* Contact Info */}
@@ -106,13 +100,6 @@ const Header = () => {
                 className={`text-left transition-colors px-2 py-1 ${isActive('/contact') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
               >
                 Contact
-              </Link>
-              <Link 
-                to="/admin" 
-                onClick={() => setIsMenuOpen(false)}
-                className={`text-left transition-colors px-2 py-1 ${isActive('/admin') ? 'text-[#F1B2B5] font-medium' : 'text-gray-700 hover:text-[#F1B2B5]'}`}
-              >
-                Admin
               </Link>
             </nav>
           </div>

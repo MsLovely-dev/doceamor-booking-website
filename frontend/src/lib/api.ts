@@ -6,6 +6,7 @@ interface RequestOptions {
   method?: RequestMethod;
   body?: BodyInit | null;
   headers?: Record<string, string>;
+  withAuth?: boolean;
 }
 
 function extractApiErrorMessage(data: unknown): string | null {
@@ -46,7 +47,8 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const authToken =
     typeof window !== "undefined" ? window.localStorage.getItem("adminBasicAuthToken") : null;
   const headers: Record<string, string> = { ...(options.headers ?? {}) };
-  if (authToken && !headers.Authorization) {
+  const withAuth = options.withAuth ?? true;
+  if (withAuth && authToken && !headers.Authorization) {
     headers.Authorization = `Basic ${authToken}`;
   }
 
