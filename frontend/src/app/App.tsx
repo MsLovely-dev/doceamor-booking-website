@@ -18,13 +18,14 @@ import NotFound from "@/app/NotFoundPage";
 import { BOOKING_ENABLED } from "@/config/features";
 
 const queryClient = new QueryClient();
+const routerBase = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <BrowserRouter basename={routerBase}>
         <Routes>
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
