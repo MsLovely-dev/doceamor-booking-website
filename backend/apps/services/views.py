@@ -1,7 +1,9 @@
-from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework import viewsets
+
+from .models import Service
+from .serializers import ServiceSerializer
 
 
-class ServiceListView(APIView):
-    def get(self, _request):
-        return Response({"results": []})
+class ServiceViewSet(viewsets.ModelViewSet):
+    queryset = Service.objects.all()
+    serializer_class = ServiceSerializer

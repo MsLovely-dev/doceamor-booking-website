@@ -34,9 +34,14 @@ Backend is set up with Django + Django REST Framework + CORS support.
 ## API routes
 
 - `GET /api/health/`
-- `GET /api/users/`
-- `GET /api/services/`
-- `GET /api/bookings/`
+- `GET|POST /api/services/`
+- `GET|PUT|PATCH|DELETE /api/services/{id}/`
+- `GET|POST /api/bookings/`
+- `GET|PUT|PATCH|DELETE /api/bookings/{id}/`
+- `GET|POST /api/bookings/staff/`
+- `GET|PUT|PATCH|DELETE /api/bookings/staff/{id}/`
+- `GET|POST /api/bookings/availability/`
+- `GET|PUT|PATCH|DELETE /api/bookings/availability/{id}/`
 
 ## Notes
 
