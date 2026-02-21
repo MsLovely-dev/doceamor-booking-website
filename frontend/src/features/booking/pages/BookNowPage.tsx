@@ -1,5 +1,5 @@
 
-import BookingForm from '@/components/BookingForm';
+import BookingForm from '@/features/booking/components/BookingForm';
 
 const BookNow = () => {
   return (

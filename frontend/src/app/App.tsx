@@ -4,13 +4,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Layout from "./components/Layout";
-import Home from "./pages/Home";
-import ServicesPage from "./pages/Services";
-import BookNow from "./pages/BookNow";
-import ContactPage from "./pages/ContactPage";
-import Admin from "./pages/Admin";
-import NotFound from "./pages/NotFound";
+import Layout from "@/layouts/MainLayout";
+import Home from "@/features/home/pages/HomePage";
+import ServicesPage from "@/features/services/pages/ServicesPage";
+import BookNow from "@/features/booking/pages/BookNowPage";
+import ContactPage from "@/features/contact/pages/ContactPage";
+import Admin from "@/features/admin/pages/AdminPage";
+import NotFound from "@/app/NotFoundPage";
 
 const queryClient = new QueryClient();
 

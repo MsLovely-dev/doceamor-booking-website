@@ -1,5 +1,5 @@
 
-import AdminDashboard from '@/components/AdminDashboard';
+import AdminDashboard from '@/features/admin/components/AdminDashboard';
 
 const Admin = () => {
   return (

@@ -1,5 +1,5 @@
 
-import Hero from '@/components/Hero';
+import Hero from '@/features/home/components/HeroSection';
 
 const Home = () => {
   return (

@@ -1,5 +1,5 @@
 
-import Services from '@/components/Services';
+import Services from '@/features/services/components/ServicesSection';
 
 const ServicesPage = () => {
   return (

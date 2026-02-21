@@ -1,5 +1,5 @@
 
-import Contact from '@/components/Contact';
+import Contact from '@/features/contact/components/ContactSection';
 
 const ContactPage = () => {
   return (
