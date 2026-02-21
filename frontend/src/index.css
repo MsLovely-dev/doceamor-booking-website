@@ -5,8 +5,8 @@
 
 /* Custom spa color palette and design system */
 :root {
-  --background: 45 15% 97%;
-  --foreground: 160 15% 15%;
+  --background: 0 0% 100%;
+  --foreground: 340 8% 30%;
   
   --card: 0 0% 100%;
   --card-foreground: 160 15% 15%;
@@ -14,35 +14,41 @@
   --popover: 0 0% 100%;
   --popover-foreground: 160 15% 15%;
   
-  --primary: 150 25% 65%;
+  --primary: 355 64% 82%;
   --primary-foreground: 0 0% 100%;
   
-  --secondary: 45 20% 90%;
-  --secondary-foreground: 160 15% 15%;
+  --secondary: 0 65% 94%;
+  --secondary-foreground: 340 8% 30%;
   
-  --muted: 45 20% 95%;
-  --muted-foreground: 160 10% 45%;
+  --muted: 0 30% 96%;
+  --muted-foreground: 340 8% 45%;
   
-  --accent: 120 15% 85%;
-  --accent-foreground: 160 15% 15%;
+  --accent: 355 64% 86%;
+  --accent-foreground: 220 10% 25%;
   
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
   
-  --border: 150 15% 88%;
-  --input: 150 15% 88%;
-  --ring: 150 25% 65%;
+  --border: 0 45% 88%;
+  --input: 0 45% 88%;
+  --ring: 355 64% 82%;
   
   --radius: 0.75rem;
   
   /* Spa-specific colors */
-  --spa-sage: 150 25% 65%;
-  --spa-cream: 45 15% 97%;
-  --spa-earth: 30 20% 75%;
-  --spa-stone: 160 10% 45%;
+  --spa-rouge: 355 64% 82%;
+  --spa-blush: 0 65% 87%;
+  --spa-bright-gray: 0 0% 100%;
+  --spa-gray: 0 0% 85%;
+  --spa-light-gray: 0 45% 92%;
 }
 
 @layer base {
+  html, body, #root {
+    min-height: 100%;
+    background-color: #FFFFFF;
+  }
+
   * {
     @apply border-border;
   }
@@ -53,14 +59,14 @@
   }
   
   .spa-gradient {
-    background: linear-gradient(135deg, hsl(var(--spa-sage)) 0%, hsl(var(--spa-earth)) 100%);
+    background: linear-gradient(135deg, hsl(var(--spa-bright-gray)) 0%, hsl(var(--spa-blush)) 100%);
   }
   
   .spa-card {
-    @apply bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300;
+    @apply bg-white border border-[#F5C5C5] shadow-lg hover:shadow-xl transition-all duration-300;
   }
   
   .spa-button {
-    @apply bg-gradient-to-r from-green-400 to-green-500 hover:from-green-500 hover:to-green-600 text-white font-medium px-8 py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg;
+    @apply bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] hover:from-[#F5C5C5] hover:to-[#F1B2B5] text-white font-medium px-8 py-3 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg;
   }
 }

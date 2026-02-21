@@ -5,9 +5,9 @@ import Footer from '@/layouts/Footer';
 
 const Layout = () => {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white">
       <Header />
-      <main>
+      <main className="bg-white">
         <Outlet />
       </main>
       <Footer />
@@ -16,3 +16,4 @@ const Layout = () => {
 };
 
 export default Layout;
+

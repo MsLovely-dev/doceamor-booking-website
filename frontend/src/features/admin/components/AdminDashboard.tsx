@@ -49,9 +49,9 @@ const AdminDashboard = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Confirmed</Badge>;
+        return <Badge className="bg-[#F5C5C5] text-[#BEBEBE] border-[#D2D2D2]">Confirmed</Badge>;
       case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Cancelled</Badge>;
+        return <Badge className="bg-[#D2D2D2] text-[#6a6a6a] border-[#BEBEBE]">Cancelled</Badge>;
       default:
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
     }
@@ -60,9 +60,9 @@ const AdminDashboard = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'confirmed':
-        return <CheckCircle className="w-5 h-5 text-green-600" />;
+        return <CheckCircle className="w-5 h-5 text-[#F1B2B5]" />;
       case 'cancelled':
-        return <XCircle className="w-5 h-5 text-red-600" />;
+        return <XCircle className="w-5 h-5 text-[#BEBEBE]" />;
       default:
         return <AlertCircle className="w-5 h-5 text-yellow-600" />;
     }
@@ -76,11 +76,11 @@ const AdminDashboard = () => {
   };
 
   return (
-    <section id="admin" className="py-20 bg-gray-50">
+    <section id="admin" className="py-20 bg-white">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-light text-gray-800 mb-4">
-            Admin <span className="font-bold text-green-600">Dashboard</span>
+            Admin <span className="font-bold text-[#F1B2B5]">Dashboard</span>
           </h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Manage your spa bookings and appointments with ease. 
@@ -93,7 +93,7 @@ const AdminDashboard = () => {
           <Card className="spa-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-              <Calendar className="h-4 w-4 text-green-600" />
+              <Calendar className="h-4 w-4 text-[#F1B2B5]" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-800">{stats.total}</div>
@@ -113,20 +113,20 @@ const AdminDashboard = () => {
           <Card className="spa-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-[#F1B2B5]" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.confirmed}</div>
+              <div className="text-2xl font-bold text-[#F1B2B5]">{stats.confirmed}</div>
             </CardContent>
           </Card>
 
           <Card className="spa-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Cancelled</CardTitle>
-              <XCircle className="h-4 w-4 text-red-600" />
+              <XCircle className="h-4 w-4 text-[#BEBEBE]" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">{stats.cancelled}</div>
+              <div className="text-2xl font-bold text-[#BEBEBE]">{stats.cancelled}</div>
             </CardContent>
           </Card>
         </div>
@@ -138,7 +138,7 @@ const AdminDashboard = () => {
               key={status}
               variant={filter === status ? "default" : "outline"}
               onClick={() => setFilter(status)}
-              className={filter === status ? "spa-button" : "border-green-200 text-green-700 hover:bg-green-50"}
+              className={filter === status ? "spa-button" : "border-[#D2D2D2] text-[#BEBEBE] hover:bg-[#EBECF0]"}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </Button>
@@ -178,19 +178,19 @@ const AdminDashboard = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-4 h-4 text-green-600" />
+                        <Mail className="w-4 h-4 text-[#F1B2B5]" />
                         <span>{booking.email}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-green-600" />
+                        <Phone className="w-4 h-4 text-[#F1B2B5]" />
                         <span>{booking.phone}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="w-4 h-4 text-green-600" />
+                        <Calendar className="w-4 h-4 text-[#F1B2B5]" />
                         <span>{booking.date}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-green-600" />
+                        <Clock className="w-4 h-4 text-[#F1B2B5]" />
                         <span>{booking.time}</span>
                       </div>
                     </div>
@@ -221,7 +221,7 @@ const AdminDashboard = () => {
                       <Button
                         onClick={() => updateBookingStatus(booking.id, 'cancelled')}
                         variant="outline"
-                        className="flex-1 border-red-200 text-red-700 hover:bg-red-50"
+                        className="flex-1 border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
                       >
                         <XCircle className="w-4 h-4 mr-2" />
                         Cancel
@@ -239,3 +239,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+

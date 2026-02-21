@@ -260,9 +260,9 @@ const BookingForm = () => {
           </Card>
 
           {bookingSession && (
-            <Card className="spa-card border-green-200">
+            <Card className="spa-card border-[#D2D2D2]">
               <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-green-600" />Payment Submission</CardTitle>
+                <CardTitle className="text-xl flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-[#F1B2B5]" />Payment Submission</CardTitle>
                 <CardDescription>
                   Booking Ref: {bookingSession.publicId}
                   <br />
@@ -345,4 +345,6 @@ const BookingForm = () => {
 };
 
 export default BookingForm;
+
+
 
