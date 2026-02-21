@@ -2,14 +2,23 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { BOOKING_ENABLED } from '@/config/features';
+import bgHome from '@/assets/background/bg-home.png';
 
 const Hero = () => {
   const navigate = useNavigate();
 
   return (
     <section id="home" className="relative min-h-screen flex items-center justify-center overflow-hidden bg-white">
+      <div className="pointer-events-none absolute inset-0">
+        <img
+          src={bgHome}
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full object-cover opacity-30"
+        />
+      </div>
       {/* Background with gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white via-[#FFF7F8] to-white"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-white/75 via-[#FFF7F8]/80 to-white/78"></div>
       
       {/* Decorative elements */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-[#F1B2B5]/30 rounded-full blur-xl animate-pulse"></div>
