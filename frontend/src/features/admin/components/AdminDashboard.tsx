@@ -283,6 +283,29 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
     }
   };
 
+  const getDisplayStatus = (booking: AdminBooking): AdminBooking['status'] | 'rejected' => {
+    if (booking.status === 'awaiting_payment' && booking.payment_rejection_reason) {
+      return 'rejected';
+    }
+    return booking.status;
+  };
+
+  const getDisplayStatusBadge = (booking: AdminBooking) => {
+    const displayStatus = getDisplayStatus(booking);
+    if (displayStatus === 'rejected') {
+      return <Badge className="bg-red-100 text-red-800 border-red-200">Rejected</Badge>;
+    }
+    return getStatusBadge(displayStatus);
+  };
+
+  const getDisplayStatusIcon = (booking: AdminBooking) => {
+    const displayStatus = getDisplayStatus(booking);
+    if (displayStatus === 'rejected') {
+      return <XCircle className="w-5 h-5 text-red-600" />;
+    }
+    return getStatusIcon(displayStatus);
+  };
+
   const resolveMediaUrl = (fileUrl: string | null) => {
     if (!fileUrl) return '';
     if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
@@ -1148,7 +1171,7 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        {getStatusIcon(booking.status)}
+                        {getDisplayStatusIcon(booking)}
                         <div>
                           <CardTitle className="text-lg">{booking.customer_name}</CardTitle>
                           <CardDescription>
@@ -1158,7 +1181,7 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
                           </CardDescription>
                         </div>
                       </div>
-                      {getStatusBadge(booking.status)}
+                      {getDisplayStatusBadge(booking)}
                     </div>
                   </CardHeader>
                   <CardContent>

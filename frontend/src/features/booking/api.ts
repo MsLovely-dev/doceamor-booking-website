@@ -62,6 +62,7 @@ export interface TrackStatusPayload {
 export interface TrackStatusResponse {
   public_id: string;
   status: string;
+  payment_rejection_reason: string;
   service_name: string;
   staff_name: string;
   start_time: string;

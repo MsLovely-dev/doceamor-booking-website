@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from .models import Availability, Booking
+from .notifications import queue_booking_status_email
 
 
 def _ensure_cancellable_before_start(booking: Booking) -> None:
@@ -48,6 +49,7 @@ def create_guest_booking(*, validated_data: dict) -> Booking:
     )
     availability.is_booked = True
     availability.save(update_fields=["is_booked"])
+    queue_booking_status_email(booking=booking, event="created")
     return booking
 
 
@@ -60,6 +62,7 @@ def submit_payment_proof(*, booking: Booking, payload: dict) -> Booking:
         locked_booking.status = Booking.Status.CANCELLED
         locked_booking.save(update_fields=["status", "updated_at"])
         _release_slot(locked_booking.availability)
+        queue_booking_status_email(booking=locked_booking, event="expired_before_submission")
         raise ValidationError("Payment window has expired. Booking has been cancelled.")
 
     locked_booking.status = Booking.Status.PAYMENT_SUBMITTED
@@ -70,6 +73,7 @@ def submit_payment_proof(*, booking: Booking, payload: dict) -> Booking:
     locked_booking.payment_submitted_at = timezone.now()
     locked_booking.payment_rejection_reason = ""
     locked_booking.save()
+    queue_booking_status_email(booking=locked_booking, event="payment_submitted")
     return locked_booking
 
 
@@ -86,15 +90,19 @@ def verify_payment(*, booking: Booking, approved: bool, admin_user, admin_note: 
         if admin_note:
             locked_booking.payment_notes = admin_note
         locked_booking.save()
+        queue_booking_status_email(booking=locked_booking, event="payment_approved")
         return locked_booking
 
     if locked_booking.payment_expires_at and timezone.now() > locked_booking.payment_expires_at:
         locked_booking.status = Booking.Status.CANCELLED
         _release_slot(locked_booking.availability)
+        event = "payment_rejected_expired"
     else:
         locked_booking.status = Booking.Status.AWAITING_PAYMENT
+        event = "payment_rejected"
     locked_booking.payment_rejection_reason = admin_note
     locked_booking.save()
+    queue_booking_status_email(booking=locked_booking, event=event)
     return locked_booking
 
 
@@ -111,6 +119,7 @@ def cancel_booking(*, booking: Booking, reason: str = "") -> Booking:
     locked_booking.cancel_reason = reason
     locked_booking.save(update_fields=["status", "cancel_reason", "updated_at"])
     _release_slot(locked_booking.availability)
+    queue_booking_status_email(booking=locked_booking, event="cancelled")
     return locked_booking
 
 
@@ -121,6 +130,7 @@ def complete_booking(*, booking: Booking) -> Booking:
         raise ValidationError("Only confirmed bookings can be marked completed.")
     locked_booking.status = Booking.Status.COMPLETED
     locked_booking.save(update_fields=["status", "updated_at"])
+    queue_booking_status_email(booking=locked_booking, event="completed")
     return locked_booking
 
 
@@ -137,5 +147,6 @@ def expire_unpaid_bookings() -> int:
         booking.status = Booking.Status.CANCELLED
         booking.save(update_fields=["status", "updated_at"])
         _release_slot(booking.availability)
+        queue_booking_status_email(booking=booking, event="expired_job")
         count += 1
     return count

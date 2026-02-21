@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -283,3 +283,20 @@ class CatalogAndAvailabilityFilterTests(APITestCase):
         ids = [item["id"] for item in response.data]
         self.assertIn(booked.id, ids)
         self.assertNotIn(unbooked.id, ids)
+
+    def test_public_availability_date_filter_uses_business_timezone_day(self):
+        local_tz = timezone.get_current_timezone()
+        local_start = timezone.make_aware(datetime(2026, 2, 22, 0, 30, 0), local_tz)
+        local_end = local_start + timedelta(minutes=30)
+        slot = Availability.objects.create(
+            staff=self.staff_active,
+            service=self.service,
+            start_time=local_start,
+            end_time=local_end,
+            is_booked=False,
+        )
+
+        response = self.client.get("/api/bookings/availability/?date=2026-02-22")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = [item["id"] for item in response.data]
+        self.assertIn(slot.id, ids)

@@ -156,6 +156,7 @@ class BookingPublicStatusSerializer(serializers.ModelSerializer):
         fields = [
             "public_id",
             "status",
+            "payment_rejection_reason",
             "service_name",
             "staff_name",
             "start_time",

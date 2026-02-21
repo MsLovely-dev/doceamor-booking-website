@@ -58,6 +58,11 @@ Backend is set up with Django + Django REST Framework + CORS support.
 
 - Default DB is SQLite.
 - PostgreSQL is enabled automatically when `POSTGRES_DB` env vars are set.
+- Booking status email notifications are enabled by default and sent using Django email backend.
+  - Dev default: `EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend` (prints email in server logs)
+  - To use SMTP, set `EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend` and configure:
+    `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS`/`EMAIL_USE_SSL`, `DEFAULT_FROM_EMAIL`
+  - Disable emails with `BOOKING_STATUS_EMAIL_ENABLED=false`
 - To import frontend catalog services into backend DB, run:
   `python manage.py sync_catalog_services`
   optional flags:

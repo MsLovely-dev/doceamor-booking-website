@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -44,6 +45,22 @@ class StaffViewSet(viewsets.ModelViewSet):
 class AvailabilityViewSet(viewsets.ModelViewSet):
     serializer_class = AvailabilitySerializer
 
+    def _apply_local_date_filter(self, queryset, date_filter: str | None):
+        if not date_filter:
+            return queryset
+
+        parsed_date = parse_date(date_filter)
+        if not parsed_date:
+            return queryset.none()
+
+        local_tz = timezone.get_current_timezone()
+        day_start = timezone.make_aware(
+            timezone.datetime.combine(parsed_date, timezone.datetime.min.time()),
+            local_tz,
+        )
+        next_day_start = day_start + timezone.timedelta(days=1)
+        return queryset.filter(start_time__gte=day_start, start_time__lt=next_day_start)
+
     def get_permissions(self):
         if self.action in {"list", "retrieve"}:
             return [AllowAny()]
@@ -57,8 +74,7 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
         is_booked_filter = self.request.query_params.get("is_booked")
 
         if is_admin_or_operator(self.request.user):
-            if date_filter:
-                queryset = queryset.filter(start_time__date=date_filter)
+            queryset = self._apply_local_date_filter(queryset, date_filter)
             if service_filter:
                 queryset = queryset.filter(service_id=service_filter)
             if staff_filter:
@@ -78,8 +94,7 @@ class AvailabilityViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_booked=True)
         else:
             queryset = queryset.filter(is_booked=False)
-        if date_filter:
-            queryset = queryset.filter(start_time__date=date_filter)
+        queryset = self._apply_local_date_filter(queryset, date_filter)
         if service_filter:
             queryset = queryset.filter(service_id=service_filter)
         if staff_filter:

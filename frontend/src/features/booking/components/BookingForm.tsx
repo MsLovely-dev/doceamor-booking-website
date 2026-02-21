@@ -16,7 +16,6 @@ import {
   fetchAvailabilityByServiceAndDate,
   fetchServices,
   submitPaymentProof,
-  trackBookingStatus,
 } from "@/features/booking/api";
 
 interface ServiceOption {
@@ -53,8 +52,8 @@ const BookingForm = () => {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [proofSubmitting, setProofSubmitting] = useState(false);
-  const [tracking, setTracking] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [showPaymentPanel, setShowPaymentPanel] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -77,13 +76,8 @@ const BookingForm = () => {
     paymentNotes: "",
     paymentProofFile: null as File | null,
   });
-  const [trackingData, setTrackingData] = useState({
-    publicId: "",
-    email: "",
-    guestToken: "",
-  });
-  const [trackingResult, setTrackingResult] = useState<string>("");
   const [servicePrefillApplied, setServicePrefillApplied] = useState(false);
+  const hasVisiblePaymentPanel = Boolean(bookingSession && showPaymentPanel);
 
   const catalogServiceMeta = useMemo(() => {
     const map = new Map<string, { category: string; group: string; order: number }>();
@@ -315,11 +309,7 @@ const BookingForm = () => {
         guestToken: response.guest_token,
         paymentExpiresAt: response.payment_expires_at,
       });
-      setTrackingData({
-        publicId: response.public_id,
-        email: formData.email,
-        guestToken: response.guest_token,
-      });
+      setShowPaymentPanel(true);
       setPaymentModalOpen(true);
       toast({
         title: "Booking created",
@@ -345,6 +335,7 @@ const BookingForm = () => {
         payment_notes: paymentData.paymentNotes,
       });
       setPaymentModalOpen(false);
+      setShowPaymentPanel(false);
       toast({ title: "Payment proof submitted", description: "Your booking is now waiting for admin verification." });
     } catch (error) {
       toast({ title: "Proof submission failed", description: (error as Error).message, variant: "destructive" });
@@ -353,127 +344,112 @@ const BookingForm = () => {
     }
   };
 
-  const submitTracking = async () => {
-    setTracking(true);
-    try {
-      const result = await trackBookingStatus(trackingData.publicId, {
-        customer_email: trackingData.email,
-        guest_token: trackingData.guestToken,
-      });
-      setTrackingResult(`Status: ${result.status.replace("_", " ")} | Slot: ${new Date(result.start_time).toLocaleString()}`);
-    } catch (error) {
-      toast({ title: "Tracking failed", description: (error as Error).message, variant: "destructive" });
-    } finally {
-      setTracking(false);
-    }
-  };
-
   return (
     <section id="booking" className="py-20 bg-white">
       <div className="container mx-auto px-4">
-        <div className="max-w-3xl mx-auto space-y-8">
-          <Card className="spa-card">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl text-gray-800">Book Your Visit</CardTitle>
-              <CardDescription>Live booking connected to your backend availability.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={submitBooking} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name" className="flex items-center gap-2"><User className="w-4 h-4" />Full Name</Label>
-                    <Input id="name" value={formData.name} onChange={(e) => handleChange("name", e.target.value)} required />
+        <div className={`${hasVisiblePaymentPanel ? "max-w-6xl" : "max-w-3xl"} mx-auto space-y-8`}>
+          <div className={hasVisiblePaymentPanel ? "grid grid-cols-1 lg:grid-cols-3 gap-6 items-start" : ""}>
+            <Card className={`spa-card ${hasVisiblePaymentPanel ? "lg:col-span-2" : ""}`}>
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl text-gray-800">Book Your Visit</CardTitle>
+                <CardDescription>Live booking connected to your backend availability.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={submitBooking} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name" className="flex items-center gap-2"><User className="w-4 h-4" />Full Name</Label>
+                      <Input id="name" value={formData.name} onChange={(e) => handleChange("name", e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone" className="flex items-center gap-2"><Phone className="w-4 h-4" />Phone Number</Label>
+                      <Input id="phone" type="tel" value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} required />
+                    </div>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="flex items-center gap-2"><Phone className="w-4 h-4" />Phone Number</Label>
-                    <Input id="phone" type="tel" value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} required />
+                    <Label htmlFor="email" className="flex items-center gap-2"><Mail className="w-4 h-4" />Email</Label>
+                    <Input id="email" type="email" value={formData.email} onChange={(e) => handleChange("email", e.target.value)} required />
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="flex items-center gap-2"><Mail className="w-4 h-4" />Email</Label>
-                  <Input id="email" type="email" value={formData.email} onChange={(e) => handleChange("email", e.target.value)} required />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Select Service</Label>
-                  <Select value={formData.serviceId} onValueChange={(value) => handleChange("serviceId", value)}>
-                    <SelectTrigger><SelectValue placeholder={servicesLoading ? "Loading services..." : "Choose service"} /></SelectTrigger>
-                    <SelectContent>
-                      {serviceOptions.map((option) => (
-                        <SelectItem key={option.key} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {!servicesLoading && sortedServices.length === 0 ? (
-                    <p className="text-xs text-[#9a9a9a]">
-                      No services available yet. Please add services from admin.
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date" className="flex items-center gap-2"><Calendar className="w-4 h-4" />Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleChange("date", e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2"><Clock className="w-4 h-4" />Available Slot</Label>
-                    <Select
-                      value={formData.availabilityId}
-                      onValueChange={(value) => handleChange("availabilityId", value)}
-                      disabled={!formData.serviceId || !selectedServiceIsBookable || !formData.date || slotsLoading}
-                    >
-                      <SelectTrigger><SelectValue placeholder={slotPlaceholder} /></SelectTrigger>
+                    <Label>Select Service</Label>
+                    <Select value={formData.serviceId} onValueChange={(value) => handleChange("serviceId", value)}>
+                      <SelectTrigger><SelectValue placeholder={servicesLoading ? "Loading services..." : "Choose service"} /></SelectTrigger>
                       <SelectContent>
-                        {availabilityOptions.map((slot) => (
-                          <SelectItem key={slot.id} value={slot.id}>
-                            {slot.label}
+                        {serviceOptions.map((option) => (
+                          <SelectItem key={option.key} value={option.value}>
+                            {option.label}
                           </SelectItem>
                         ))}
-                        {!slotsLoading && availability.length === 0 ? (
-                          <div className="px-2 py-2 text-xs text-[#8a8a8a]">
-                            {!formData.serviceId
-                              ? "Choose a service to view slots."
-                              : !selectedServiceIsBookable
-                                ? "Selected service is not yet available for booking."
-                                : !formData.date
-                                  ? "Choose a date to view slots."
-                                  : "No open slots for this date. Try another date."}
-                          </div>
-                        ) : null}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-[#9a9a9a]">
-                      Slots come from admin-created availability and show only future, unbooked schedules for the selected service/date.
-                    </p>
+                    {!servicesLoading && sortedServices.length === 0 ? (
+                      <p className="text-xs text-[#9a9a9a]">
+                        No services available yet. Please add services from admin.
+                      </p>
+                    ) : null}
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (optional)</Label>
-                  <Textarea id="notes" value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} className="min-h-[90px]" />
-                </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="date" className="flex items-center gap-2"><Calendar className="w-4 h-4" />Date</Label>
+                      <Input
+                        id="date"
+                        type="date"
+                        value={formData.date}
+                        onChange={(e) => handleChange("date", e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2"><Clock className="w-4 h-4" />Available Slot</Label>
+                      <Select
+                        value={formData.availabilityId}
+                        onValueChange={(value) => handleChange("availabilityId", value)}
+                        disabled={!formData.serviceId || !selectedServiceIsBookable || !formData.date || slotsLoading}
+                      >
+                        <SelectTrigger><SelectValue placeholder={slotPlaceholder} /></SelectTrigger>
+                        <SelectContent>
+                          {availabilityOptions.map((slot) => (
+                            <SelectItem key={slot.id} value={slot.id}>
+                              {slot.label}
+                            </SelectItem>
+                          ))}
+                          {!slotsLoading && availability.length === 0 ? (
+                            <div className="px-2 py-2 text-xs text-[#8a8a8a]">
+                              {!formData.serviceId
+                                ? "Choose a service to view slots."
+                                : !selectedServiceIsBookable
+                                  ? "Selected service is not yet available for booking."
+                                  : !formData.date
+                                    ? "Choose a date to view slots."
+                                    : "No open slots for this date. Try another date."}
+                            </div>
+                          ) : null}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-[#9a9a9a]">
+                        Slots come from admin-created availability and show only future, unbooked schedules for the selected service/date.
+                      </p>
+                    </div>
+                  </div>
 
-                <Button type="submit" className="w-full spa-button" disabled={submitting || !selectedAvailability}>
-                  {submitting ? "Creating Booking..." : "Create Booking"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes (optional)</Label>
+                    <Textarea id="notes" value={formData.notes} onChange={(e) => handleChange("notes", e.target.value)} className="min-h-[90px]" />
+                  </div>
 
-          {bookingSession && (
-            <>
-              <Card className="spa-card border-[#D2D2D2]">
+                  <Button type="submit" className="w-full spa-button" disabled={submitting || !selectedAvailability}>
+                    {submitting ? "Creating Booking..." : "Create Booking"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            {hasVisiblePaymentPanel ? (
+              <Card className="spa-card border-[#D2D2D2] lg:col-span-1">
                 <CardHeader>
                   <CardTitle className="text-xl flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-[#F1B2B5]" />Payment Submission</CardTitle>
                   <CardDescription>
@@ -488,7 +464,11 @@ const BookingForm = () => {
                   </Button>
                 </CardContent>
               </Card>
+            ) : null}
+          </div>
 
+          {bookingSession && (
+            <>
               <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
                 <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
@@ -572,23 +552,6 @@ const BookingForm = () => {
             </>
           )}
 
-          <Card className="spa-card">
-            <CardHeader>
-              <CardTitle className="text-xl">Track Booking Status</CardTitle>
-              <CardDescription>Check your booking using `public_id + guest_token + email`.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Input placeholder="Booking Ref (public_id)" value={trackingData.publicId} onChange={(e) => setTrackingData((prev) => ({ ...prev, publicId: e.target.value }))} />
-                <Input placeholder="Email" value={trackingData.email} onChange={(e) => setTrackingData((prev) => ({ ...prev, email: e.target.value }))} />
-                <Input placeholder="Guest token" value={trackingData.guestToken} onChange={(e) => setTrackingData((prev) => ({ ...prev, guestToken: e.target.value }))} />
-              </div>
-              <Button onClick={submitTracking} disabled={tracking || !trackingData.publicId || !trackingData.email || !trackingData.guestToken}>
-                {tracking ? "Checking..." : "Track Status"}
-              </Button>
-              {trackingResult ? <p className="text-sm text-gray-700">{trackingResult}</p> : null}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </section>
