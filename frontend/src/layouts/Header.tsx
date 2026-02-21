@@ -23,7 +23,7 @@ const Header = () => {
               alt="Doce-Amor logo"
               className="h-9 w-9 rounded-full object-cover"
             />
-            <h1 className="text-2xl font-bold text-[#F1B2B5]">Doce-Amor Wellness Spa</h1>
+            <h1 className="text-2xl font-display font-semibold text-[#F1B2B5]">Doce-Amor Wellness Spa</h1>
           </Link>
 
           {/* Desktop Navigation */}

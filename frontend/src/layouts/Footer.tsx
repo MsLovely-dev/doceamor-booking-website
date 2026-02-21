@@ -1,5 +1,6 @@
 import { Heart, MapPin, Phone, Facebook } from "lucide-react";
 import { BOOKING_ENABLED } from "@/config/features";
+import doceamorIcon from "@/assets/icons/doceamor-icon.png";
 
 const Footer = () => {
   return (
@@ -8,8 +9,12 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-[#F1B2B5] to-[#F5C5C5] rounded-full"></div>
-              <h3 className="text-2xl font-bold">Doce-Amor Wellness Spa</h3>
+              <img
+                src={doceamorIcon}
+                alt="Doce-Amor logo"
+                className="h-9 w-9 rounded-full object-cover"
+              />
+              <h3 className="text-2xl font-display font-semibold">Doce-Amor Wellness Spa</h3>
             </div>
             <p className="text-[#6b5b62] leading-relaxed">
               Your sanctuary for wellness, beauty, and tranquility. Discover the perfect balance of luxury and serenity.

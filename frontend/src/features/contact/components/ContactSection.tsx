@@ -89,20 +89,12 @@ const Contact = () => {
               <CardContent>
                 <div className="grid grid-cols-2 gap-3 text-sm text-gray-700">
                   <div className="flex items-center gap-2">
-                    <Car className="w-4 h-4 text-[#F1B2B5]" />
-                    <span>Free Parking</span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <Wifi className="w-4 h-4 text-[#F1B2B5]" />
                     <span>Free WiFi</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="w-4 h-4 bg-[#F1B2B5] rounded-full flex-shrink-0"></span>
                     <span>Relaxation Lounge</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-4 h-4 bg-[#F1B2B5] rounded-full flex-shrink-0"></span>
-                    <span>Refreshment Bar</span>
                   </div>
                 </div>
               </CardContent>
