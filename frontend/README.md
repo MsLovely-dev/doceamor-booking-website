@@ -55,6 +55,14 @@ npm run dev
 This project is built with:
 
 - Vite
+
+## Backend API setup
+
+1. Copy env file:
+`cp .env.example .env` (or PowerShell `Copy-Item .env.example .env`)
+2. Set backend URL in `.env`:
+`VITE_API_BASE_URL=http://localhost:8000`
+3. Start Django backend and ensure CORS allows `http://localhost:5173`.
 - TypeScript
 - React
 - shadcn-ui

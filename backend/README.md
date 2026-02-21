@@ -36,12 +36,22 @@ Backend is set up with Django + Django REST Framework + CORS support.
 - `GET /api/health/`
 - `GET|POST /api/services/`
 - `GET|PUT|PATCH|DELETE /api/services/{id}/`
-- `GET|POST /api/bookings/`
-- `GET|PUT|PATCH|DELETE /api/bookings/{id}/`
-- `GET|POST /api/bookings/staff/`
+- `POST /api/bookings/` (guest create)
+- `POST /api/bookings/{public_id}/submit-payment-proof/` (guest)
+- `POST /api/bookings/{public_id}/track-status/` (guest with `customer_email + guest_token`)
+- `POST /api/bookings/{public_id}/cancel/` (guest/admin)
+- `POST /api/bookings/{public_id}/verify-payment/` (admin/operator)
+- `POST /api/bookings/{public_id}/complete/` (admin/operator)
+- `GET|POST /api/bookings/staff/` (admin only)
 - `GET|PUT|PATCH|DELETE /api/bookings/staff/{id}/`
-- `GET|POST /api/bookings/availability/`
+- `GET|POST /api/bookings/availability/` (public read for bookable slots)
 - `GET|PUT|PATCH|DELETE /api/bookings/availability/{id}/`
+
+## Role model
+
+- `admin`: full backoffice control
+- `operator`: booking operations (`verify-payment`, `complete`, booking list/retrieve)
+- both roles are managed using Django Groups
 
 ## Notes
 
