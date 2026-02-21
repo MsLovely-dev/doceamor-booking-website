@@ -23,6 +23,43 @@ const iconMap: Record<string, ReactNode> = {
   "Bridal / Birthday Party": <Sparkles className="h-4 w-4" />,
 };
 
+const COLUMN_ALIASES: Record<string, string[]> = {
+  M: ["Member"],
+  NM: ["Non-Member", "Non Member"],
+  Member: ["M"],
+  "Non-Member": ["NM", "Non Member"],
+  "Non Member": ["NM", "Non-Member"],
+};
+
+const getColumnLabel = (column: string) => {
+  if (column === "M" || column === "Member") return "Member";
+  if (column === "NM" || column === "Non-Member" || column === "Non Member") return "Non-Member";
+  return column;
+};
+
+const getColumnBadge = (column: string) => {
+  if (column === "M" || column === "Member") return "M";
+  if (column === "NM" || column === "Non-Member" || column === "Non Member") return "NM";
+  return null;
+};
+
+const getRowValue = (row: Record<string, string>, column: string) => {
+  if (row[column] != null) return row[column];
+
+  const normalizedColumn = column.trim();
+  if (row[normalizedColumn] != null) return row[normalizedColumn];
+
+  const aliasKeys = COLUMN_ALIASES[column] ?? COLUMN_ALIASES[normalizedColumn] ?? [];
+  for (const alias of aliasKeys) {
+    if (row[alias] != null) return row[alias];
+  }
+
+  const normalizedRowKey = Object.keys(row).find((key) => key.trim() === normalizedColumn);
+  if (normalizedRowKey && row[normalizedRowKey] != null) return row[normalizedRowKey];
+
+  return "-";
+};
+
 const ServicesSection = () => {
   const [activeSection, setActiveSection] = useState(SERVICE_CATALOG[0]?.title ?? "");
   const sectionTopRef = useRef<HTMLElement>(null);
@@ -82,10 +119,12 @@ const ServicesSection = () => {
           <div className="mb-8 flex flex-wrap items-center justify-center gap-4 text-sm text-[#7d6d74]">
             {visibleColumns.map((column) => (
               <div key={column} className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 shadow-sm ring-1 ring-[#F5C5C5]">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#F5C5C5]/55 text-xs font-semibold text-[#7d6d74]">
-                  {column}
-                </span>
-                <span>{column === "M" ? "Member" : column === "NM" ? "Non-Member" : column}</span>
+                {getColumnBadge(column) ? (
+                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#F5C5C5]/55 text-xs font-semibold text-[#7d6d74]">
+                    {getColumnBadge(column)}
+                  </span>
+                ) : null}
+                <span>{getColumnLabel(column)}</span>
               </div>
             ))}
           </div>
@@ -140,7 +179,7 @@ const ServicesSection = () => {
                                   key={`${group.title}-${row.Service}-${column}`}
                                   className="px-4 py-3 text-right text-sm font-medium text-[#7d6d74] md:px-6 md:text-base"
                                 >
-                                  {row[column] ?? "-"}
+                                  {getRowValue(row, column)}
                                 </td>
                               ))}
                             </tr>
