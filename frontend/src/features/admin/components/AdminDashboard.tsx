@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,30 +12,20 @@ import { Calendar, Clock, User, Mail, Phone, CheckCircle, XCircle, AlertCircle, 
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import {
+  AdminBooking,
   Availability,
   Service,
   Staff,
   createAvailability,
   createService,
   createStaff,
+  fetchAdminBookings,
   fetchAvailabilityAdmin,
   fetchServicesAdmin,
   fetchStaff,
+  verifyAdminBookingPayment,
   updateService,
 } from '@/features/booking/api';
-
-interface Booking {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  service: string;
-  date: string;
-  time: string;
-  notes: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
-  createdAt: string;
-}
 
 interface AdminDashboardProps {
   initialSection?: 'slots' | 'staff' | 'bookings' | 'services';
@@ -44,12 +34,16 @@ interface AdminDashboardProps {
 const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const apiBaseUrl = ((import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') ?? 'http://localhost:8000');
   const existingToken = typeof window !== 'undefined' ? localStorage.getItem('adminBasicAuthToken') : null;
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'cancelled'>('all');
+  const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [filter, setFilter] = useState<'all' | AdminBooking['status']>('all');
   const [isAdminAuthorized, setIsAdminAuthorized] = useState(Boolean(existingToken));
   const [authChecking, setAuthChecking] = useState(false);
   const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingActionPublicId, setBookingActionPublicId] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
   const [authForm, setAuthForm] = useState({ username: '', password: '' });
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -96,11 +90,6 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   };
 
   useEffect(() => {
-    const savedBookings = JSON.parse(localStorage.getItem('spaBookings') || '[]');
-    setBookings(savedBookings);
-  }, []);
-
-  useEffect(() => {
     setActiveAdminSection(initialSection);
     const sectionId =
       initialSection === 'slots'
@@ -115,15 +104,27 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
     }, 0);
   }, [initialSection]);
 
+  const refreshBookings = async () => {
+    setBookingsLoading(true);
+    try {
+      const bookingData = await fetchAdminBookings();
+      setBookings(bookingData);
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
   const loadAdminData = async () => {
-    const [serviceData, staffData, availabilityData] = await Promise.all([
+    const [serviceData, staffData, availabilityData, bookingData] = await Promise.all([
       fetchServicesAdmin(),
       fetchStaff(),
       fetchAvailabilityAdmin(),
+      fetchAdminBookings(),
     ]);
     setServices(serviceData);
     setStaff(staffData);
     setAvailabilityRows(availabilityData);
+    setBookings(bookingData);
   };
 
   const refreshAvailabilityRows = async () => {
@@ -176,6 +177,13 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
   }, [services]);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
     if (!slotForm.serviceId || !slotForm.startTime) return;
     const selectedService = services.find((service) => String(service.id) === slotForm.serviceId);
     if (!selectedService) return;
@@ -192,50 +200,114 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
     }
   }, [slotForm.serviceId, slotForm.startTime, services]);
 
-  const updateBookingStatus = (id: number, status: 'confirmed' | 'cancelled') => {
-    const updatedBookings = bookings.map(booking =>
-      booking.id === id ? { ...booking, status } : booking
-    );
-    setBookings(updatedBookings);
-    localStorage.setItem('spaBookings', JSON.stringify(updatedBookings));
-    
-    toast({
-      title: `Booking ${status}`,
-      description: `The appointment has been ${status}.`,
-    });
+  const reviewPaymentProof = async (booking: AdminBooking, approved: boolean) => {
+    setBookingActionPublicId(booking.public_id);
+    try {
+      const adminNote = approved ? '' : window.prompt('Rejection reason (optional):') ?? '';
+      await verifyAdminBookingPayment(booking.public_id, {
+        approved,
+        admin_note: adminNote,
+      });
+      await refreshBookings();
+      toast({
+        title: approved ? 'Payment approved' : 'Payment rejected',
+        description: `Booking ${booking.public_id} was updated.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Payment review failed',
+        description: (error as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setBookingActionPublicId(null);
+    }
   };
 
-  const filteredBookings = bookings.filter(booking => 
+  const isAwaitingExpired = (booking: AdminBooking) => {
+    if (booking.status !== 'awaiting_payment' || !booking.payment_expires_at) return false;
+    return new Date(booking.payment_expires_at).getTime() <= nowMs;
+  };
+
+  const visibleBookings = useMemo(
+    () => bookings.filter((booking) => !isAwaitingExpired(booking)),
+    [bookings, nowMs],
+  );
+
+  const filteredBookings = visibleBookings.filter((booking) =>
     filter === 'all' || booking.status === filter
   );
 
-  const getStatusBadge = (status: string) => {
+  const formatRemaining = (iso: string | null) => {
+    if (!iso) return '';
+    const diff = new Date(iso).getTime() - nowMs;
+    if (diff <= 0) return 'Expired';
+    const totalMinutes = Math.floor(diff / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours > 0) return `${hours}h ${minutes}m left`;
+    return `${minutes}m left`;
+  };
+
+  const getStatusBadge = (status: AdminBooking['status']) => {
     switch (status) {
+      case 'awaiting_payment':
+        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Awaiting Payment</Badge>;
+      case 'payment_submitted':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Payment Submitted</Badge>;
       case 'confirmed':
         return <Badge className="bg-[#F5C5C5] text-[#BEBEBE] border-[#D2D2D2]">Confirmed</Badge>;
+      case 'completed':
+        return <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">Completed</Badge>;
       case 'cancelled':
         return <Badge className="bg-[#D2D2D2] text-[#6a6a6a] border-[#BEBEBE]">Cancelled</Badge>;
       default:
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+        return <Badge className="bg-gray-100 text-gray-700 border-gray-200">{status}</Badge>;
     }
   };
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: AdminBooking['status']) => {
     switch (status) {
+      case 'awaiting_payment':
+        return <AlertCircle className="w-5 h-5 text-amber-600" />;
+      case 'payment_submitted':
+        return <AlertCircle className="w-5 h-5 text-blue-600" />;
       case 'confirmed':
         return <CheckCircle className="w-5 h-5 text-[#F1B2B5]" />;
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-emerald-600" />;
       case 'cancelled':
         return <XCircle className="w-5 h-5 text-[#BEBEBE]" />;
       default:
-        return <AlertCircle className="w-5 h-5 text-yellow-600" />;
+        return <AlertCircle className="w-5 h-5 text-gray-600" />;
     }
   };
 
+  const resolveMediaUrl = (fileUrl: string | null) => {
+    if (!fileUrl) return '';
+    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) return fileUrl;
+    return `${apiBaseUrl}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+  };
+
+  const serviceNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const service of services) map.set(service.id, service.name);
+    return map;
+  }, [services]);
+
+  const availabilityById = useMemo(() => {
+    const map = new Map<number, Availability>();
+    for (const row of availabilityRows) map.set(row.id, row);
+    return map;
+  }, [availabilityRows]);
+
   const stats = {
-    total: bookings.length,
-    pending: bookings.filter(b => b.status === 'pending').length,
-    confirmed: bookings.filter(b => b.status === 'confirmed').length,
-    cancelled: bookings.filter(b => b.status === 'cancelled').length,
+    total: visibleBookings.length,
+    awaiting_payment: visibleBookings.filter(b => b.status === 'awaiting_payment').length,
+    payment_submitted: visibleBookings.filter(b => b.status === 'payment_submitted').length,
+    confirmed: visibleBookings.filter(b => b.status === 'confirmed').length,
+    completed: visibleBookings.filter(b => b.status === 'completed').length,
+    cancelled: visibleBookings.filter(b => b.status === 'cancelled').length,
   };
 
   const createSlot = async (event: React.FormEvent) => {
@@ -997,21 +1069,21 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
 
           <Card className="spa-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <AlertCircle className="h-4 w-4 text-yellow-600" />
+              <CardTitle className="text-sm font-medium">Awaiting Payment</CardTitle>
+              <AlertCircle className="h-4 w-4 text-amber-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+              <div className="text-2xl font-bold text-amber-600">{stats.awaiting_payment}</div>
             </CardContent>
           </Card>
 
           <Card className="spa-card">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Confirmed</CardTitle>
-              <CheckCircle className="h-4 w-4 text-[#F1B2B5]" />
+              <CardTitle className="text-sm font-medium">For Review</CardTitle>
+              <AlertCircle className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#F1B2B5]">{stats.confirmed}</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.payment_submitted}</div>
             </CardContent>
           </Card>
 
@@ -1028,104 +1100,180 @@ const AdminDashboard = ({ initialSection = 'slots' }: AdminDashboardProps) => {
 
         {/* Filter Buttons */}
         <div className="flex flex-wrap gap-2 mb-8">
-          {(['all', 'pending', 'confirmed', 'cancelled'] as const).map((status) => (
+          {([
+            { value: 'all', label: 'All' },
+            { value: 'awaiting_payment', label: 'Awaiting Payment' },
+            { value: 'payment_submitted', label: 'For Review' },
+            { value: 'confirmed', label: 'Confirmed' },
+            { value: 'completed', label: 'Completed' },
+            { value: 'cancelled', label: 'Cancelled' },
+          ] as const).map(({ value, label }) => (
             <Button
-              key={status}
-              variant={filter === status ? "default" : "outline"}
-              onClick={() => setFilter(status)}
-              className={filter === status ? "spa-button" : "border-[#D2D2D2] text-[#BEBEBE] hover:bg-[#EBECF0]"}
+              key={value}
+              variant={filter === value ? "default" : "outline"}
+              onClick={() => setFilter(value)}
+              className={filter === value ? "spa-button" : "border-[#D2D2D2] text-[#BEBEBE] hover:bg-[#EBECF0]"}
             >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
+              {label}
             </Button>
           ))}
         </div>
 
         {/* Bookings List */}
         <div className="space-y-6">
-          {filteredBookings.length === 0 ? (
+          {bookingsLoading ? (
+            <Card className="spa-card">
+              <CardContent className="text-center py-12 text-gray-600">
+                Loading bookings...
+              </CardContent>
+            </Card>
+          ) : filteredBookings.length === 0 ? (
             <Card className="spa-card">
               <CardContent className="text-center py-12">
                 <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-600 mb-2">No bookings found</h3>
                 <p className="text-gray-500">
-                  {filter === 'all' ? 'No bookings have been made yet.' : `No ${filter} bookings found.`}
+                  {filter === 'all' ? 'No bookings have been made yet.' : `No ${filter.replace('_', ' ')} bookings found.`}
                 </p>
               </CardContent>
             </Card>
           ) : (
-            filteredBookings.map((booking) => (
-              <Card key={booking.id} className="spa-card">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(booking.status)}
-                      <div>
-                        <CardTitle className="text-lg">{booking.name}</CardTitle>
-                        <CardDescription>
-                          Booked on {new Date(booking.createdAt).toLocaleDateString()}
-                        </CardDescription>
-                      </div>
-                    </div>
-                    {getStatusBadge(booking.status)}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="w-4 h-4 text-[#F1B2B5]" />
-                        <span>{booking.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="w-4 h-4 text-[#F1B2B5]" />
-                        <span>{booking.phone}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="w-4 h-4 text-[#F1B2B5]" />
-                        <span>{booking.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-[#F1B2B5]" />
-                        <span>{booking.time}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Service</h4>
-                        <p className="text-sm text-gray-600">{booking.service}</p>
-                      </div>
-                      {booking.notes && (
+            filteredBookings.map((booking) => {
+              const slot = availabilityById.get(booking.availability);
+              const serviceName = serviceNameById.get(booking.service) ?? `Service #${booking.service}`;
+              const proofUrl = resolveMediaUrl(booking.payment_proof_file);
+
+              return (
+                <Card key={booking.id} className="spa-card">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        {getStatusIcon(booking.status)}
                         <div>
-                          <h4 className="text-sm font-medium text-gray-700 mb-1">Notes</h4>
-                          <p className="text-sm text-gray-600">{booking.notes}</p>
+                          <CardTitle className="text-lg">{booking.customer_name}</CardTitle>
+                          <CardDescription>
+                            Ref: {booking.public_id}
+                            <br />
+                            Booked on {new Date(booking.created_at).toLocaleDateString()}
+                          </CardDescription>
                         </div>
-                      )}
+                      </div>
+                      {getStatusBadge(booking.status)}
                     </div>
-                  </div>
-                  
-                  {booking.status === 'pending' && (
-                    <div className="flex gap-3 mt-6 pt-4 border-t">
-                      <Button
-                        onClick={() => updateBookingStatus(booking.id, 'confirmed')}
-                        className="spa-button flex-1"
-                      >
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Confirm
-                      </Button>
-                      <Button
-                        onClick={() => updateBookingStatus(booking.id, 'cancelled')}
-                        variant="outline"
-                        className="flex-1 border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
-                      >
-                        <XCircle className="w-4 h-4 mr-2" />
-                        Cancel
-                      </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="w-4 h-4 text-[#F1B2B5]" />
+                          <span>{booking.customer_email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="w-4 h-4 text-[#F1B2B5]" />
+                          <span>{booking.customer_phone}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Calendar className="w-4 h-4 text-[#F1B2B5]" />
+                          <span>{slot ? new Date(slot.start_time).toLocaleDateString() : '-'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="w-4 h-4 text-[#F1B2B5]" />
+                          <span>
+                            {slot
+                              ? `${new Date(slot.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(slot.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                              : '-'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Service</h4>
+                          <p className="text-sm text-gray-600">{serviceName}</p>
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-700 mb-1">Payment Method</h4>
+                          <p className="text-sm text-gray-600">{booking.payment_method ? booking.payment_method.toUpperCase() : 'Not yet submitted'}</p>
+                        </div>
+                        {booking.status === 'awaiting_payment' && booking.payment_expires_at ? (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Awaiting Payment Until</h4>
+                            <p className="text-sm text-gray-600">
+                              {new Date(booking.payment_expires_at).toLocaleString()} ({formatRemaining(booking.payment_expires_at)})
+                            </p>
+                          </div>
+                        ) : null}
+                        {booking.payment_reference ? (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Payment Reference</h4>
+                            <p className="text-sm text-gray-600">{booking.payment_reference}</p>
+                          </div>
+                        ) : null}
+                        {proofUrl ? (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Payment Proof</h4>
+                            <a
+                              href={proofUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-[#7a5967] underline underline-offset-2"
+                            >
+                              View uploaded proof
+                            </a>
+                          </div>
+                        ) : null}
+                        {booking.payment_notes ? (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Payment Notes</h4>
+                            <p className="text-sm text-gray-600">{booking.payment_notes}</p>
+                          </div>
+                        ) : null}
+                        {booking.payment_rejection_reason ? (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Rejection Reason</h4>
+                            <p className="text-sm text-gray-600">{booking.payment_rejection_reason}</p>
+                          </div>
+                        ) : null}
+                        {booking.cancel_reason ? (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Cancel Reason</h4>
+                            <p className="text-sm text-gray-600">{booking.cancel_reason}</p>
+                          </div>
+                        ) : null}
+                        {booking.notes ? (
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-700 mb-1">Booking Notes</h4>
+                            <p className="text-sm text-gray-600">{booking.notes}</p>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+
+                    {booking.status === 'payment_submitted' ? (
+                      <div className="flex gap-3 mt-6 pt-4 border-t">
+                        <Button
+                          onClick={() => reviewPaymentProof(booking, true)}
+                          className="spa-button flex-1"
+                          disabled={bookingActionPublicId === booking.public_id}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          {bookingActionPublicId === booking.public_id ? 'Updating...' : 'Approve Payment'}
+                        </Button>
+                        <Button
+                          onClick={() => reviewPaymentProof(booking, false)}
+                          variant="outline"
+                          className="flex-1 border-[#D2D2D2] text-[#6a6a6a] hover:bg-[#EBECF0]"
+                          disabled={bookingActionPublicId === booking.public_id}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          {bookingActionPublicId === booking.public_id ? 'Updating...' : 'Reject Payment'}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
         </>

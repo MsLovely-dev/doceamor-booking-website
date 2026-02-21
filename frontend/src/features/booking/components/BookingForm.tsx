@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +36,14 @@ const normalizeName = (value: string) => value.toLowerCase().replace(/[^a-z0-9\s
 
 const tokenize = (value: string) => normalizeName(value).split(" ").filter(Boolean);
 
+const paymentQrModules = import.meta.glob("../../../assets/payments/*.{png,jpg,jpeg,webp,avif}", {
+  eager: true,
+  import: "default",
+}) as Record<string, string>;
+
+const gcashQrUrl =
+  Object.entries(paymentQrModules).find(([path]) => path.toLowerCase().includes("gcash"))?.[1] ?? "";
+
 const BookingForm = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -45,6 +54,7 @@ const BookingForm = () => {
   const [submitting, setSubmitting] = useState(false);
   const [proofSubmitting, setProofSubmitting] = useState(false);
   const [tracking, setTracking] = useState(false);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -310,6 +320,7 @@ const BookingForm = () => {
         email: formData.email,
         guestToken: response.guest_token,
       });
+      setPaymentModalOpen(true);
       toast({
         title: "Booking created",
         description: "Complete payment and submit proof before expiry to confirm your reservation.",
@@ -333,6 +344,7 @@ const BookingForm = () => {
         payment_proof_file: paymentData.paymentProofFile,
         payment_notes: paymentData.paymentNotes,
       });
+      setPaymentModalOpen(false);
       toast({ title: "Payment proof submitted", description: "Your booking is now waiting for admin verification." });
     } catch (error) {
       toast({ title: "Proof submission failed", description: (error as Error).message, variant: "destructive" });
@@ -460,65 +472,104 @@ const BookingForm = () => {
           </Card>
 
           {bookingSession && (
-            <Card className="spa-card border-[#D2D2D2]">
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-[#F1B2B5]" />Payment Submission</CardTitle>
-                <CardDescription>
-                  Booking Ref: {bookingSession.publicId}
-                  <br />
-                  Payment expires: {new Date(bookingSession.paymentExpiresAt).toLocaleString()}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Payment Method</Label>
-                    <Select
-                      value={paymentData.paymentMethod}
-                      onValueChange={(value: "gcash" | "bdo") => setPaymentData((prev) => ({ ...prev, paymentMethod: value }))}
+            <>
+              <Card className="spa-card border-[#D2D2D2]">
+                <CardHeader>
+                  <CardTitle className="text-xl flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-[#F1B2B5]" />Payment Submission</CardTitle>
+                  <CardDescription>
+                    Booking Ref: {bookingSession.publicId}
+                    <br />
+                    Payment expires: {new Date(bookingSession.paymentExpiresAt).toLocaleString()}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full spa-button" onClick={() => setPaymentModalOpen(true)}>
+                    Open Payment Modal
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
+                <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-[#F1B2B5]" />Payment Submission</DialogTitle>
+                    <DialogDescription>
+                      Booking Ref: {bookingSession.publicId}
+                      <br />
+                      Payment expires: {new Date(bookingSession.paymentExpiresAt).toLocaleString()}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Payment Method</Label>
+                        <Select
+                          value={paymentData.paymentMethod}
+                          onValueChange={(value: "gcash" | "bdo") => setPaymentData((prev) => ({ ...prev, paymentMethod: value }))}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="gcash">GCash</SelectItem>
+                            <SelectItem value="bdo">BDO</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Payment Reference</Label>
+                        <Input
+                          value={paymentData.paymentReference}
+                          onChange={(e) => setPaymentData((prev) => ({ ...prev, paymentReference: e.target.value }))}
+                          placeholder="Transaction/reference number"
+                        />
+                      </div>
+                    </div>
+
+                    {paymentData.paymentMethod === "gcash" && (
+                      <div className="space-y-2 rounded-lg border border-[#EAD0D2] bg-[#FFF7F8] p-4">
+                        <Label className="block">GCash QR</Label>
+                        {gcashQrUrl ? (
+                          <img
+                            src={gcashQrUrl}
+                            alt="GCash QR code for payment"
+                            className="mx-auto w-full max-w-xs rounded-md border bg-white object-contain p-2"
+                          />
+                        ) : (
+                          <p className="text-sm text-[#7A7A7A]">
+                            Upload your GCash QR image to `frontend/src/assets/payments/` and include `gcash` in the filename.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Upload Proof (jpg/png/pdf)</Label>
+                      <Input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={(e) =>
+                          setPaymentData((prev) => ({
+                            ...prev,
+                            paymentProofFile: e.target.files && e.target.files[0] ? e.target.files[0] : null,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Notes (optional)</Label>
+                      <Textarea value={paymentData.paymentNotes} onChange={(e) => setPaymentData((prev) => ({ ...prev, paymentNotes: e.target.value }))} />
+                    </div>
+                    <Button
+                      className="w-full spa-button"
+                      onClick={submitProof}
+                      disabled={proofSubmitting || !paymentData.paymentReference || !paymentData.paymentProofFile}
                     >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gcash">GCash</SelectItem>
-                        <SelectItem value="bdo">BDO</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      {proofSubmitting ? "Submitting..." : "Submit Payment Proof"}
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Payment Reference</Label>
-                    <Input
-                      value={paymentData.paymentReference}
-                      onChange={(e) => setPaymentData((prev) => ({ ...prev, paymentReference: e.target.value }))}
-                      placeholder="Transaction/reference number"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Upload Proof (jpg/png/pdf)</Label>
-                  <Input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.pdf"
-                    onChange={(e) =>
-                      setPaymentData((prev) => ({
-                        ...prev,
-                        paymentProofFile: e.target.files && e.target.files[0] ? e.target.files[0] : null,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes (optional)</Label>
-                  <Textarea value={paymentData.paymentNotes} onChange={(e) => setPaymentData((prev) => ({ ...prev, paymentNotes: e.target.value }))} />
-                </div>
-                <Button
-                  className="w-full spa-button"
-                  onClick={submitProof}
-                  disabled={proofSubmitting || !paymentData.paymentReference || !paymentData.paymentProofFile}
-                >
-                  {proofSubmitting ? "Submitting..." : "Submit Payment Proof"}
-                </Button>
-              </CardContent>
-            </Card>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
 
           <Card className="spa-card">

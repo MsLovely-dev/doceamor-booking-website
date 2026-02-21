@@ -87,6 +87,7 @@ class BookingSerializer(serializers.ModelSerializer):
             "payment_submitted_at",
             "payment_method",
             "payment_reference",
+            "payment_proof_file",
             "payment_notes",
             "payment_verified_at",
             "payment_verified_by",
@@ -105,7 +106,6 @@ class BookingSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        extra_kwargs = {"payment_reference": {"write_only": True}}
 
 
 class BookingCreateResponseSerializer(serializers.Serializer):

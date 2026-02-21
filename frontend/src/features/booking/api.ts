@@ -72,6 +72,30 @@ export interface TrackStatusResponse {
   created_at: string;
 }
 
+export interface AdminBooking {
+  id: number;
+  public_id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  notes: string;
+  service: number;
+  staff: number;
+  availability: number;
+  status: "awaiting_payment" | "payment_submitted" | "confirmed" | "completed" | "cancelled";
+  payment_expires_at: string | null;
+  payment_submitted_at: string | null;
+  payment_method: "gcash" | "bdo" | null;
+  payment_reference: string;
+  payment_proof_file: string | null;
+  payment_notes: string;
+  payment_verified_at: string | null;
+  payment_rejection_reason: string;
+  cancel_reason: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export async function fetchServices(): Promise<Service[]> {
   return apiRequest<Service[]>("/api/services/", { withAuth: false });
 }
@@ -183,5 +207,21 @@ export async function trackBookingStatus(publicId: string, payload: TrackStatusP
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     withAuth: false,
+  });
+}
+
+export async function fetchAdminBookings(status?: AdminBooking["status"]): Promise<AdminBooking[]> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiRequest<AdminBooking[]>(`/api/bookings/${query}`);
+}
+
+export async function verifyAdminBookingPayment(
+  publicId: string,
+  payload: { approved: boolean; admin_note?: string },
+): Promise<AdminBooking> {
+  return apiRequest<AdminBooking>(`/api/bookings/${publicId}/verify-payment/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 }
